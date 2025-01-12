@@ -1,0 +1,192 @@
+项目名称
+AI Image Tool —— 基于 AI 的移动端图像处理工具
+
+项目简介
+AI Image Tool 是一款专为移动端用户设计的在线图像处理工具，提供交互式画布和多种 AI 图像处理功能（如抠图、裁剪、旋转、缩放等）。它采用 Next.js 构建，支持响应式设计，能够在移动端上流畅运行，提供优质的触控操作体验。
+
+功能说明
+1. 首页
+响应式信息展示，针对移动端优化界面布局。
+展示工具功能和特点。
+提供快捷入口按钮，引导用户进入画布界面或预览模式。
+2. 画图界面
+触控友好画布：
+支持多点触控操作（放大、缩小、旋转）。
+提供简单易用的工具栏按钮，便于移动端点击。
+操作功能：
+图片裁剪、旋转、缩放。
+抠图（移除背景）。
+支持触控拖动调整图片位置。
+上传与保存：
+支持本地图片上传和编辑结果下载（移动端文件交互优化）。
+3. 预览模式
+支持在手机上实时预览原图和编辑后的图片。
+轻松切换原图模式和结果模式。
+操作完成后，提供一键下载或分享功能。
+4. 后端 API 支持
+上传接口：上传图片到服务器。
+下载接口：从服务器获取处理完成的图片。
+图像处理接口：
+抠图（移除背景）
+裁剪
+缩放
+旋转
+针对移动端的优化点
+响应式布局：
+
+使用 CSS Media Queries，确保页面在小屏幕设备（如手机和平板）上显示良好。
+工具栏按钮宽大易点击，画布操作区域占满屏幕。
+触控友好：
+
+支持手势操作（如双指缩放、旋转、拖动）。
+提供简化的 UI，避免过多的复杂按钮影响移动端体验。
+文件处理优化：
+
+支持移动设备相册上传。
+输出的图像文件支持下载和直接分享到社交媒体。
+完整目录结构
+plaintext
+复制代码
+ai-image-tool/
+├── pages/                     # 页面目录
+│   ├── index.js               # 首页（信息展示界面）
+│   ├── draw.js                # 画图界面（核心功能）
+│   ├── preview.js             # 预览模式页面
+│   ├── api/                   # 后端 API 路由
+│   │   ├── upload.js          # 图片上传接口
+│   │   ├── download.js        # 图片下载接口
+│   │   └── edit/              # 图像处理 API 路由
+│   │       ├── crop.js        # 裁剪 API
+│   │       ├── rotate.js      # 旋转 API
+│   │       ├── remove-bg.js   # 抠图 API
+│   │       └── resize.js      # 缩放 API
+├── components/                # 可复用的组件
+│   ├── Layout/                # 布局相关组件
+│   │   ├── Navbar.js          # 响应式导航栏
+│   │   ├── Footer.js          # 页脚
+│   ├── Canvas/                # 画布相关组件
+│   │   ├── Canvas.js          # 核心画布组件（触控优化）
+│   │   ├── Toolbar.js         # 工具栏（裁剪、旋转等）
+│   │   └── PreviewWindow.js   # 预览窗口组件
+│   └── Common/                # 通用小组件
+│       ├── Button.js          # 响应式按钮组件
+│       ├── Modal.js           # 弹窗组件
+│       ├── Loading.js         # 加载动画
+│       └── ImageUploader.js   # 图片上传组件
+├── styles/                    # 样式文件夹
+│   ├── globals.css            # 全局样式
+│   ├── Home.module.css        # 首页样式
+│   ├── Draw.module.css        # 画图界面样式
+│   ├── Preview.module.css     # 预览模式样式
+│   └── Components.module.css  # 通用组件样式
+├── lib/                       # 工具库（逻辑处理）
+│   ├── api.js                 # API 请求封装
+│   ├── canvasUtils.js         # 画布工具函数（触控处理）
+│   ├── fileUtils.js           # 文件处理工具
+│   └── validation.js          # 验证工具
+├── hooks/                     # 自定义 React Hooks
+│   ├── useCanvas.js           # 画布操作 Hook
+│   ├── useImageEditor.js      # 图像处理 Hook
+│   └── usePreview.js          # 预览功能 Hook
+├── context/                   # 全局状态管理（React Context）
+│   ├── AuthContext.js         # 用户认证上下文（扩展功能）
+│   └── CanvasContext.js       # 画布上下文
+├── public/                    # 静态资源文件
+│   ├── images/                # 图片资源
+│   │   ├── logo.png           # 网站 Logo
+│   │   └── example.jpg        # 示例图片
+│   └── favicon.ico            # 网站图标
+├── config/                    # 配置文件
+│   ├── apiConfig.js           # API 配置
+│   ├── siteConfig.js          # 网站元信息配置
+│   └── envConfig.js           # 环境变量封装
+├── .env.local                 # 本地环境变量
+├── next.config.js             # Next.js 配置文件
+├── package.json               # 项目依赖和脚本配置
+├── README.md                  # 项目说明文档
+└── tsconfig.json              # TypeScript 配置文件（如果使用 TypeScript）
+移动端样式示例
+全局响应式设置
+globals.css 示例：
+
+css
+复制代码
+/* 设置全局基础样式 */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #f9f9f9;
+}
+
+/* 设置全局响应式布局 */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px;
+}
+
+/* 针对小屏设备的优化 */
+@media (max-width: 768px) {
+  .container {
+    padding: 5px;
+  }
+
+  button {
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+}
+画布界面样式
+Draw.module.css 示例：
+
+css
+复制代码
+.draw-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.canvas-wrapper {
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 1 / 1; /* 保持画布为正方形 */
+  border: 1px solid #ddd;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+本地预览说明
+环境变量：
+在 .env.local 文件中开启预览模式：
+
+env
+复制代码
+NEXT_PUBLIC_PREVIEW_MODE=true
+页面访问：
+在浏览器中打开 http://localhost:3000/preview，进入本地预览模式。
+页面支持：
+触控画布的操作。
+显示原图与编辑后的图像。
+Vercel 部署
+推送代码到 GitHub。
+登录 Vercel。
+添加环境变量：
+env
+复制代码
+NEXT_PUBLIC_PREVIEW_MODE=true
+部署后，访问生产环境链接或测试环境链接。
+总结
+AI Image Tool 专注于移动端用户体验，提供触控友好的交互方式和优化的界面布局，同时支持在桌面端使用。通过响应式设计和动态功能调整，确保用户在任何设备上都能流畅使用。
