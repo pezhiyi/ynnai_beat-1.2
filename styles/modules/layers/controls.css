@@ -1,0 +1,160 @@
+/* 图层按钮样式 */
+.canvas-layers {
+  position: relative;
+  composes: glass-effect flex-center;
+  border: none;
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.canvas-layers:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.layer-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: var(--primary-color);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem var(--spacing-xs);
+  border-radius: var(--border-radius-lg);
+  min-width: 1.2rem;
+  text-align: center;
+}
+
+/* 图层控制按钮组 */
+.layer-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 0 var(--spacing-xs);
+  background: var(--glass-bg);
+  border-radius: var(--border-radius-sm);
+  height: 2rem;
+}
+
+/* 基础按钮样式 */
+.layer-controls button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0.25rem;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  background: transparent;
+  color: var(--text-color);
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.layer-controls button:hover {
+  opacity: 1;
+  background: var(--layer-hover-bg);
+}
+
+.layer-controls button:active {
+  transform: scale(0.95);
+}
+
+.layer-controls button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.layer-controls button:disabled:hover {
+  background: transparent;
+}
+
+/* 可见性按钮 */
+.layer-visibility {
+  color: var(--primary-color);
+}
+
+.layer-visibility.visible {
+  opacity: 1 !important;
+}
+
+/* 移动按钮 */
+.layer-move-btn {
+  color: var(--text-color);
+}
+
+/* 删除按钮 */
+.layer-delete-btn {
+  color: var(--danger-color);
+}
+
+.layer-delete-btn:hover {
+  background: rgba(220, 38, 38, 0.1) !important;
+}
+
+/* 按钮图标 */
+.button-icon {
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 2;
+}
+
+/* 触摸设备优化 */
+@media (hover: none) {
+  .layer-controls button {
+    opacity: 0.9;
+  }
+  
+  .layer-controls button:active {
+    transform: scale(0.9);
+    background: var(--layer-hover-bg);
+  }
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .canvas-layers {
+    padding: var(--spacing-sm);
+  }
+  
+  .layer-count {
+    font-size: 0.65rem;
+    padding: 0.1rem var(--spacing-xs);
+  }
+  
+  .layer-controls {
+    gap: var(--spacing-xs);
+  }
+  
+  .layer-move-btn,
+  .layer-visibility,
+  .layer-delete {
+    padding: var(--spacing-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .canvas-layers {
+    padding: var(--spacing-xs);
+  }
+  
+  .layer-count {
+    font-size: 0.6rem;
+    min-width: 1rem;
+  }
+  
+  .layer-controls {
+    gap: var(--spacing-xs);
+  }
+  
+  .layer-move-btn,
+  .layer-visibility,
+  .layer-delete {
+    padding: var(--spacing-xs);
+  }
+} 

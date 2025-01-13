@@ -1,0 +1,116 @@
+/* 装饰元素 */
+.design-elements {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.design-circle {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border: 2px solid rgba(124, 58, 237, 0.1);
+  border-radius: 50%;
+  top: 10%;
+  right: 5%;
+  animation: rotate 20s linear infinite;
+}
+
+.design-square {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border: 2px solid rgba(124, 58, 237, 0.1);
+  bottom: 15%;
+  left: 10%;
+  animation: rotate 15s linear infinite reverse;
+  transform: rotate(45deg);
+}
+
+.design-dots {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background-image: radial-gradient(circle, rgba(124, 58, 237, 0.1) 2px, transparent 2px);
+  background-size: 20px 20px;
+  top: 40%;
+  left: 15%;
+  animation: float 10s ease-in-out infinite;
+  opacity: 0.5;
+}
+
+/* 动态背景 */
+.animated-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  overflow: hidden;
+  opacity: 0.08;
+}
+
+.gradient-sphere {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.5;
+  animation: float 25s infinite ease-in-out;
+  transition: all 0.5s ease;
+}
+
+.gradient-sphere:nth-child(1) {
+  background: var(--gradient-1);
+  width: 500px;
+  height: 500px;
+  top: -150px;
+  left: -150px;
+  animation-delay: 0s;
+}
+
+.gradient-sphere:nth-child(2) {
+  background: var(--gradient-2);
+  width: 400px;
+  height: 400px;
+  top: 40%;
+  right: -100px;
+  animation-delay: -8s;
+}
+
+.gradient-sphere:nth-child(3) {
+  background: var(--gradient-1);
+  width: 250px;
+  height: 250px;
+  bottom: -50px;
+  left: 50%;
+  animation-delay: -10s;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(50px, 50px) scale(1.1);
+  }
+  50% {
+    transform: translate(0, 100px) scale(1);
+  }
+  75% {
+    transform: translate(-50px, 50px) scale(0.9);
+  }
+} 

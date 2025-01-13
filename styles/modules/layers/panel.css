@@ -1,0 +1,144 @@
+/* 图层面板基础样式 */
+.layers-panel {
+  composes: glass-effect;
+  border-radius: var(--border-radius-lg);
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15),
+              inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+              0 0 0 1px rgba(0, 0, 0, 0.1);
+  padding: var(--spacing-xs);
+}
+
+/* 图层容器样式 */
+.layers-container {
+  position: absolute;
+  top: var(--spacing-lg);
+  left: var(--spacing-lg);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* 图层详情面板 */
+.layer-details {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 100%;
+  background: white;
+  border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
+  box-shadow: var(--glass-shadow);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.details-header {
+  composes: flex-center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.details-title {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.details-content {
+  composes: flex-center;
+  gap: var(--spacing-sm);
+}
+
+/* 最小化状态的图层列表 */
+.layers-mini {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  composes: glass-effect;
+  border-radius: var(--border-radius-md);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .layers-container {
+    top: var(--spacing-md);
+    left: var(--spacing-md);
+  }
+  
+  .layer-details {
+    padding: var(--spacing-sm);
+  }
+}
+
+@media (max-width: 480px) {
+  .layers-container {
+    top: var(--spacing-sm);
+    left: var(--spacing-sm);
+  }
+  
+  .layer-details {
+    padding: var(--spacing-xs);
+  }
+}
+
+/* 图层列表容器 */
+.layers-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs);
+  max-height: 320px;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+  border-radius: var(--border-radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* 图层面板底部 */
+.layers-footer {
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-xs);
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border-radius: var(--border-radius-md);
+}
+
+/* 添加图层按钮 */
+.layer-add-btn {
+  width: 100%;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--button-secondary-bg);
+  border: 1.5px dashed var(--glass-border);
+  border-radius: var(--border-radius-sm);
+  color: var(--primary-color);
+  transition: all 0.2s ease;
+  box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.1);
+}
+
+.layer-add-btn:hover {
+  background: var(--layer-hover-bg);
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
+}
+
+.layer-add-btn:active {
+  transform: scale(0.98);
+}
+
+.layer-add-btn .button-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  stroke-width: 2;
+} 

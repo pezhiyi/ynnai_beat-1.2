@@ -17,6 +17,7 @@ export default function Draw() {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [imageCache, setImageCache] = useState({});
   const offscreenCanvasRef = useRef(null);
+  const [editMode, setEditMode] = useState(null);
 
   // 计算画布尺寸
   const calculateDimensions = () => {
@@ -229,47 +230,76 @@ export default function Draw() {
 
   // 处理图片下载
   const handleDownload = () => {
-    if (!canvasRef.current) return;
+    // 先取消选中状态
+    setSelectedLayer(null);
     
-    // 创建临时画布以确保下载的图片包含所有图层和位置信息
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-    const canvas = canvasRef.current;
-    
-    tempCanvas.width = canvas.width;
-    tempCanvas.height = canvas.height;
-    
-    // 复制当前画布内容到临时画布
-    tempCtx.drawImage(canvas, 0, 0);
-    
-    // 创建临时链接并下载
-    const link = document.createElement('a');
-    link.download = `image-${new Date().getTime()}.png`;
-    link.href = tempCanvas.toDataURL('image/png', 1.0);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // 延迟一帧执行下载，确保选中状态被清除
+    requestAnimationFrame(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      // 创建临时链接并触发下载
+      const link = document.createElement('a');
+      link.download = 'canvas-image.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
   };
 
   // 新增编辑工具处理函数
   const handleMatting = () => {
-    console.log('抠图');
+    if (layers.length === 1) {
+      setSelectedLayer(layers[0].id);
+      setEditMode('matting');
+    } else if (!selectedLayer) {
+      alert("请先选择要编辑的图层");
+    } else {
+      setEditMode('matting');
+    }
   };
 
   const handleEnhance = () => {
-    console.log('增强');
+    if (layers.length === 1) {
+      setSelectedLayer(layers[0].id);
+      setEditMode('enhance');
+    } else if (!selectedLayer) {
+      alert("请先选择要编辑的图层");
+    } else {
+      setEditMode('enhance');
+    }
   };
 
   const handleErase = () => {
-    console.log('擦除');
+    if (layers.length === 1) {
+      setSelectedLayer(layers[0].id);
+      setEditMode('erase');
+    } else if (!selectedLayer) {
+      alert("请先选择要编辑的图层");
+    } else {
+      setEditMode('erase');
+    }
   };
 
   const handleRotate = () => {
-    console.log('旋转');
+    if (layers.length === 1) {
+      setSelectedLayer(layers[0].id);
+      setEditMode('rotate');
+    } else if (!selectedLayer) {
+      alert("请先选择要编辑的图层");
+    } else {
+      setEditMode('rotate');
+    }
   };
 
   const handleZoom = () => {
-    console.log('缩放');
+    if (layers.length === 1) {
+      setSelectedLayer(layers[0].id);
+      setEditMode('zoom');
+    } else if (!selectedLayer) {
+      alert("请先选择要编辑的图层");
+    } else {
+      setEditMode('zoom');
+    }
   };
 
   // 处理图层上传
@@ -348,7 +378,9 @@ export default function Draw() {
   };
 
   // 处理图层选择
-  const handleLayerSelect = (layerId) => {
+  const handleLayerSelect = (layerId, e) => {
+    // 阻止事件冒泡
+    e?.stopPropagation();
     setSelectedLayer(layerId === selectedLayer ? null : layerId);
   };
 
@@ -413,20 +445,23 @@ export default function Draw() {
 
   // 处理画布鼠标按下
   const handleCanvasMouseDown = (e) => {
-    if (!hasImage) return;
-    
     const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
+
     // 获取点击的图层
     const clickedLayerId = getClickedLayer(x, y);
+    
     if (clickedLayerId) {
-      setSelectedLayer(clickedLayerId);
       setIsDraggingImage(true);
       setDragStart({ x, y });
+      // 设置选中的图层
+      setSelectedLayer(clickedLayerId);
     } else {
+      // 如果点击空白处，取消选中
       setSelectedLayer(null);
     }
   };
@@ -534,8 +569,10 @@ export default function Draw() {
 
             // 为选中的图层添加效果
             if (layer.id === selectedLayer) {
-              ctx.shadowColor = 'rgba(124, 58, 237, 0.5)';
-              ctx.shadowBlur = 10 * dpr;
+              ctx.shadowColor = 'rgba(59, 130, 246, 0.5)';
+              ctx.shadowBlur = 8;
+              ctx.shadowOffsetX = 0;
+              ctx.shadowOffsetY = 0;
             }
 
             ctx.drawImage(img, x, y, targetWidth, targetHeight);
@@ -601,8 +638,10 @@ export default function Draw() {
 
     // 为选中的图层添加效果
     if (layer.id === selectedLayer) {
-      ctx.shadowColor = 'rgba(124, 58, 237, 0.5)';
-      ctx.shadowBlur = 10 * dpr;
+      ctx.shadowColor = 'rgba(59, 130, 246, 0.5)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
     }
 
     ctx.drawImage(img, x, y, targetWidth, targetHeight);
@@ -767,6 +806,31 @@ export default function Draw() {
     }
   };
 
+  // 处理画布区域外点击
+  const handleOutsideClick = (e) => {
+    // 如果点击的是画布或者图层面板内的元素,不处理
+    if (e.target.closest('.draw-canvas') || 
+        e.target.closest('.layers-panel') || 
+        e.target.closest('.layers-mini')) {
+      return;
+    }
+    // 取消选中状态
+    setSelectedLayer(null);
+  };
+
+  useEffect(() => {
+    // 添加点击事件监听
+    document.addEventListener('click', handleOutsideClick);
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  }, []);
+
+  // 处理返回按钮点击
+  const handleBackEdit = () => {
+    setEditMode(null);
+  };
+
   return (
     <Layout>
       <div className="draw-container">
@@ -781,7 +845,7 @@ export default function Draw() {
         >
           <canvas
             ref={canvasRef}
-            className={`draw-canvas ${isDraggingImage ? 'dragging' : ''}`}
+            className={`draw-canvas ${isDragging ? 'dragging' : ''}`}
             width={dimensions.width}
             height={dimensions.height}
             onMouseDown={handleCanvasMouseDown}
@@ -793,7 +857,33 @@ export default function Draw() {
             onTouchEnd={handleCanvasTouchEnd}
             onTouchCancel={handleCanvasTouchEnd}
             style={{ cursor: hasImage ? 'move' : 'default' }}
-          />
+          >
+            {layers.map((layer, index) => (
+              <div
+                key={layer.id}
+                className={`canvas-layer ${selectedLayer === layer.id ? 'selected' : ''}`}
+                style={{
+                  position: 'absolute',
+                  left: layerPositions[layer.id]?.x || 0,
+                  top: layerPositions[layer.id]?.y || 0,
+                  display: layer.visible ? 'block' : 'none',
+                  zIndex: layers.length - index,
+                  pointerEvents: 'none'
+                }}
+              >
+                <img
+                  src={layer.src}
+                  alt={`图层 ${index + 1}`}
+                  style={{
+                    width: layer.width,
+                    height: layer.height,
+                    pointerEvents: 'none'
+                  }}
+                  draggable={false}
+                />
+              </div>
+            ))}
+          </canvas>
           <input
             type="file"
             ref={layerInputRef}
@@ -831,12 +921,13 @@ export default function Draw() {
                 {layers.map((layer, index) => (
                   <motion.div
                     key={layer.id}
-                    className={`layer-mini-item ${layer.visible ? 'visible' : ''}`}
+                    className={`layer-mini-item ${layer.visible ? 'visible' : ''} ${selectedLayer === layer.id ? 'selected' : ''}`}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.05 }}
+                    onClick={(e) => handleLayerSelect(layer.id, e)}
                   >
-                    <img src={layer.src} alt={layer.name} className="layer-mini-preview" />
+                    <img src={layer.src} alt={layer.name} className="layer-mini-preview" draggable={false} />
                     <span className="layer-mini-index">{index + 1}</span>
                   </motion.div>
                 ))}
@@ -851,23 +942,6 @@ export default function Draw() {
                 animate={{ opacity: 1, scale: 1, x: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="layers-header">
-                  <h3>图层管理</h3>
-                  {layers.length < 5 && (
-                    <motion.button
-                      className="layer-add-btn"
-                      onClick={handleLayerUpload}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="12" y1="5" x2="12" y2="19"/>
-                        <line x1="5" y1="12" x2="19" y2="12"/>
-                      </svg>
-                    </motion.button>
-                  )}
-                </div>
-
                 <div className="layers-list">
                   {layers.map((layer, index) => (
                     <motion.div
@@ -877,14 +951,27 @@ export default function Draw() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.2, delay: index * 0.05 }}
                     >
-                      <div className="layer-preview-container">
-                        <img src={layer.src} alt={layer.name} className="layer-preview" />
+                      <div 
+                        className={`layer-preview-container ${selectedLayer === layer.id ? 'selected' : ''}`}
+                        onClick={(e) => handleLayerSelect(layer.id, e)}
+                      >
+                        <img 
+                          src={layer.src} 
+                          alt={`图层 ${index + 1}`}
+                          className="layer-preview" 
+                          draggable={false}
+                        />
                         <span className="layer-index">{index + 1}</span>
                       </div>
+                      
                       <div className="layer-controls">
                         <button
                           className={`layer-visibility ${layer.visible ? 'visible' : ''}`}
-                          onClick={() => handleLayerVisibility(layer.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleLayerVisibility(layer.id);
+                          }}
+                          title={layer.visible ? "隐藏图层" : "显示图层"}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -893,8 +980,12 @@ export default function Draw() {
                         </button>
                         <button
                           className="layer-move-btn"
-                          onClick={() => handleMoveUp(index)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveUp(index);
+                          }}
                           disabled={index === 0}
+                          title="上移图层"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M12 19V5M5 12l7-7 7 7"/>
@@ -902,8 +993,12 @@ export default function Draw() {
                         </button>
                         <button
                           className="layer-move-btn"
-                          onClick={() => handleMoveDown(index)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveDown(index);
+                          }}
                           disabled={index === layers.length - 1}
+                          title="下移图层"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M12 5v14M5 12l7 7 7-7"/>
@@ -911,16 +1006,37 @@ export default function Draw() {
                         </button>
                         <button
                           className="layer-delete-btn"
-                          onClick={() => handleDeleteLayer(layer.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteLayer(layer.id);
+                          }}
+                          title="删除图层"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
                           </svg>
-            </button>
+                        </button>
                       </div>
                     </motion.div>
                   ))}
                 </div>
+
+                {layers.length < 5 && (
+                  <div className="layers-footer">
+                    <motion.button
+                      className="layer-add-btn"
+                      onClick={handleLayerUpload}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      title="添加图层"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                    </motion.button>
+                  </div>
+                )}
               </motion.div>
             )}
           </div>
@@ -963,72 +1079,217 @@ export default function Draw() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <div className="tools-buttons">
-              <motion.button
-                className="tool-button matting"
-                onClick={handleMatting}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M7 4h10M7 20h10M4 7v10M20 7v10" />
-                  <rect x="9" y="9" width="6" height="6" />
-                </svg>
-                抠图
-              </motion.button>
+            <div className={`tools-buttons ${editMode ? 'editing' : ''}`}>
+              {!editMode ? (
+                <>
+                  <motion.button
+                    className="tool-button matting"
+                    onClick={handleMatting}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M7 4h10M7 20h10M4 7v10M20 7v10" />
+                      <rect x="9" y="9" width="6" height="6" />
+                    </svg>
+                    <span className="button-text">抠图</span>
+                  </motion.button>
 
-              <motion.button
-                className="tool-button enhance"
-                onClick={handleEnhance}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M12 5v2M12 17v2M5 12H3M21 12h-2M18.36 18.36l-1.41-1.41M7.05 7.05L5.64 5.64M18.36 5.64l-1.41 1.41M7.05 16.95l-1.41 1.41" />
-                </svg>
-                增强
-              </motion.button>
+                  <motion.button
+                    className="tool-button enhance"
+                    onClick={handleEnhance}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M12 5v2M12 17v2M5 12H3M21 12h-2M18.36 18.36l-1.41-1.41M7.05 7.05L5.64 5.64M18.36 5.64l-1.41 1.41M7.05 16.95l-1.41 1.41" />
+                    </svg>
+                    <span className="button-text">增强</span>
+                  </motion.button>
 
-              <motion.button
-                className="tool-button erase"
-                onClick={handleErase}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 20H7L3 16l8-8 8 8-4 4" />
-                </svg>
-                擦除
-              </motion.button>
+                  <motion.button
+                    className="tool-button erase"
+                    onClick={handleErase}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 20H7L3 16l8-8 8 8-4 4" />
+                    </svg>
+                    <span className="button-text">擦除</span>
+                  </motion.button>
 
-              <motion.button
-                className="tool-button rotate"
-                onClick={handleRotate}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                  <path d="M3 3v5h5" />
-                </svg>
-                旋转
-              </motion.button>
+                  <motion.button
+                    className="tool-button rotate"
+                    onClick={handleRotate}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                      <path d="M3 3v5h5" />
+                    </svg>
+                    <span className="button-text">旋转</span>
+                  </motion.button>
 
-              <motion.button
-                className="tool-button zoom"
-                onClick={handleZoom}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  <line x1="11" y1="8" x2="11" y2="14" />
-                  <line x1="8" y1="11" x2="14" y2="11" />
-                </svg>
-                缩放
-              </motion.button>
+                  <motion.button
+                    className="tool-button zoom"
+                    onClick={handleZoom}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="11" cy="11" r="8" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      <line x1="11" y1="8" x2="11" y2="14" />
+                      <line x1="8" y1="11" x2="14" y2="11" />
+                    </svg>
+                    <span className="button-text">缩放</span>
+                  </motion.button>
+                </>
+              ) : (
+                <>
+                  <motion.button
+                    className={`tool-button ${editMode}`}
+                    onClick={() => {}}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      {editMode === 'matting' && (
+                        <path d="M7 4h10M7 20h10M4 7v10M20 7v10" />
+                      )}
+                      {editMode === 'enhance' && (
+                        <>
+                          <circle cx="12" cy="12" r="3" />
+                          <path d="M12 5v2M12 17v2M5 12H3M21 12h-2M18.36 18.36l-1.41-1.41M7.05 7.05L5.64 5.64M18.36 5.64l-1.41 1.41M7.05 16.95l-1.41 1.41" />
+                        </>
+                      )}
+                      {editMode === 'erase' && (
+                        <path d="M20 20H7L3 16l8-8 8 8-4 4" />
+                      )}
+                      {editMode === 'rotate' && (
+                        <>
+                          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                          <path d="M3 3v5h5" />
+                        </>
+                      )}
+                      {editMode === 'zoom' && (
+                        <>
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                          <line x1="11" y1="8" x2="11" y2="14" />
+                          <line x1="8" y1="11" x2="14" y2="11" />
+                        </>
+                      )}
+                    </svg>
+                  </motion.button>
+                  
+                  <div className="edit-actions">
+                    {/* 编辑操作按钮 */}
+                    {editMode === 'matting' && (
+                      <>
+                        <motion.button className="edit-button" onClick={() => {}}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                            <path d="M12 6v12"/>
+                            <path d="M6 12h12"/>
+                          </svg>
+                        </motion.button>
+                        <motion.button className="edit-button" onClick={() => {}}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                            <path d="M8 12h8"/>
+                          </svg>
+                        </motion.button>
+                      </>
+                    )}
+                    
+                    {editMode === 'enhance' && (
+                      <>
+                        <motion.button className="edit-button" onClick={() => {}}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M5 12h14"/>
+                            <path d="M12 5l7 7-7 7"/>
+                          </svg>
+                        </motion.button>
+                        <motion.button className="edit-button" onClick={() => {}}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M19 12H5"/>
+                            <path d="M12 19l-7-7 7-7"/>
+                          </svg>
+                        </motion.button>
+                      </>
+                    )}
+                    
+                    {editMode === 'erase' && (
+                      <>
+                        <motion.button className="edit-button" onClick={() => {}}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M15 9l-6 6"/>
+                            <path d="M9 9l6 6"/>
+                          </svg>
+                        </motion.button>
+                        <motion.button className="edit-button" onClick={() => {}}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 3l18 18"/>
+                          </svg>
+                        </motion.button>
+                      </>
+                    )}
+                    
+                    {editMode === 'rotate' && (
+                      <>
+                        <motion.button className="edit-button" onClick={() => {}}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                          </svg>
+                        </motion.button>
+                        <motion.button className="edit-button" onClick={() => {}}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                            <path d="M21 3v5h-5"/>
+                          </svg>
+                        </motion.button>
+                      </>
+                    )}
+                    
+                    {editMode === 'zoom' && (
+                      <>
+                        <motion.button className="edit-button" onClick={() => {}}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            <line x1="11" y1="8" x2="11" y2="14"/>
+                            <line x1="8" y1="11" x2="14" y2="11"/>
+                          </svg>
+                        </motion.button>
+                        <motion.button className="edit-button" onClick={() => {}}>
+                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            <line x1="8" y1="11" x2="14" y2="11"/>
+                          </svg>
+                        </motion.button>
+                      </>
+                    )}
+                    
+                    <motion.button
+                      className="back-button"
+                      onClick={handleBackEdit}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                      </svg>
+                    </motion.button>
+                  </div>
+                </>
+              )}
             </div>
           </motion.div>
         )}

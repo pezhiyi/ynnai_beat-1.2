@@ -1,0 +1,93 @@
+:root {
+  --primary-color: #7C3AED;
+  --background-color: #f8f7ff;
+  --text-color: #1f2937;
+  --gradient-1: linear-gradient(135deg, #7C3AED, #C084FC);
+  --gradient-2: linear-gradient(135deg, #8B5CF6, #A78BFA);
+  --accent-gradient: linear-gradient(135deg, #4F46E5, #7C3AED);
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-shadow: 0 8px 32px rgba(26, 26, 27, 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--text-color);
+  background: linear-gradient(135deg, #f8f7ff 0%, #f0f7ff 50%, #f5f3ff 100%);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* 全局链接样式 */
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--primary-color);
+}
+
+/* 全局按钮样式 */
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  color: inherit;
+}
+
+button:focus {
+  outline: none;
+}
+
+/* 全局图片样式 */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 全局列表样式 */
+ul, ol {
+  list-style: none;
+}
+
+/* 全局表单元素样式 */
+input, textarea, select {
+  font: inherit;
+  color: inherit;
+}
+
+/* 全局滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.4);
+}
+
+/* 全局选中文本样式 */
+::selection {
+  background: rgba(124, 58, 237, 0.2);
+  color: var(--text-color);
+} 

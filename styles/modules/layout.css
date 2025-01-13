@@ -1,0 +1,24 @@
+/* 基础布局样式 */
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem 0;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1.5rem 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 1rem 0;
+  }
+} 

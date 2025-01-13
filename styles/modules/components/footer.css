@@ -1,0 +1,11 @@
+/* Footer样式 */
+.footer {
+  background: transparent;
+  backdrop-filter: none;
+  padding: 0;
+  margin-top: auto;
+}
+
+.footer-content {
+  display: none;
+} 
