@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
-import Layout from '@components/Layout/Layout';
-import Canvas from '@components/Canvas/Canvas';
-import Toolbar from '@components/Canvas/Toolbar';
-import ImageUploader from '@components/Common/ImageUploader';
-import Loading from '@components/Common/Loading';
+import Layout from '@/components/Layout/Layout';
+import Canvas from '@/components/Canvas/Canvas';
+import Toolbar from '@/components/Canvas/Toolbar';
+import ImageUploader from '@/components/Common/ImageUploader';
+import Loading from '@/components/Common/Loading';
 
 export default function Draw() {
   const [imageUrl, setImageUrl] = useState('');

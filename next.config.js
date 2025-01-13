@@ -1,6 +1,4 @@
 /** @type {import('next').NextConfig} */
-const path = require('path');
-
 const nextConfig = {
   env: {
     NEXT_PUBLIC_DOMAIN: process.env.NEXT_PUBLIC_DOMAIN || 'ynnai.com',
@@ -24,17 +22,6 @@ const nextConfig = {
         ],
       },
     ]
-  },
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': path.join(__dirname),
-      '@components': path.join(__dirname, 'components'),
-      '@pages': path.join(__dirname, 'pages'),
-      '@styles': path.join(__dirname, 'styles'),
-      '@config': path.join(__dirname, 'config')
-    };
-    return config;
   }
 }
 
