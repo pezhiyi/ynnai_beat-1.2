@@ -1,4 +1,5 @@
 import React from 'react';
+import Layout from './Layout/Layout';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -11,12 +12,19 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Error caught:', error, errorInfo);
+    console.error('Error caught by boundary:', error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
-      return <h1>出现了一些问题。</h1>;
+      return (
+        <Layout>
+          <div className="error-container">
+            <h1>出现了一些问题</h1>
+            <p>抱歉，应用程序遇到了错误。请刷新页面重试。</p>
+          </div>
+        </Layout>
+      );
     }
 
     return this.props.children;

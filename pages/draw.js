@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
-import Layout from '@/components/Layout/Layout';
-import Canvas from '@/components/Canvas/Canvas';
-import Toolbar from '@/components/Canvas/Toolbar';
-import ImageUploader from '@/components/Common/ImageUploader';
-import Loading from '@/components/Common/Loading';
+import Layout from '../components/Layout/Layout';
+import Canvas from '../components/Canvas/Canvas';
+import Toolbar from '../components/Canvas/Toolbar';
+import ImageUploader from '../components/Common/ImageUploader';
+import Loading from '../components/Common/Loading';
 
 export default function Draw() {
   const [imageUrl, setImageUrl] = useState('');
@@ -22,7 +22,14 @@ export default function Draw() {
     setIsLoading(true);
     try {
       // 实现保存逻辑
-      console.log('Saving...');
+      const canvas = document.querySelector('canvas');
+      if (canvas) {
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = 'edited-image.png';
+        link.href = dataUrl;
+        link.click();
+      }
     } catch (error) {
       console.error('Save failed:', error);
     } finally {
@@ -44,7 +51,6 @@ export default function Draw() {
             </button>
           </>
         )}
-        
         {isLoading && <Loading />}
       </div>
     </Layout>
