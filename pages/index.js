@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
-import { siteConfig } from '@/config/siteConfig';
-import Layout from '@/components/Layout/Layout';
+import { siteConfig } from '../config/siteConfig';
+import Layout from '../components/Layout/Layout';
 
 export default function Home() {
   return (

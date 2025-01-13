@@ -1,37 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': require('path').resolve(__dirname)
-    };
-    return config;
+  env: {
+    NEXT_PUBLIC_DOMAIN: 'ynnai.com',
   },
-  swcMinify: false,
-  onError: (err) => {
-    console.error('Next.js Error:', err);
+  // 配置图片域名白名单
+  images: {
+    domains: ['ynnai.com'],
   },
-  experimental: {
-    appDir: false,
-    serverComponents: false
-  },
-  async rewrites() {
-    return [
-      {
-        source: '/:path*',
-        destination: '/:path*',
-      },
-    ]
-  },
+  // 生产环境配置
   async headers() {
     return [
       {
         source: '/:path*',
         headers: [
-          { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,DELETE,OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Content-Type' }
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on'
+          }
         ],
       },
     ]
