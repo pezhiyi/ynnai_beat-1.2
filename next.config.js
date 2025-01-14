@@ -1,27 +1,27 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  env: {
-    NEXT_PUBLIC_DOMAIN: process.env.NEXT_PUBLIC_DOMAIN || 'ynnai.com',
-    NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV || 'production',
-    NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL || 'https://ynnai.com'
+  reactStrictMode: true,
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+    level: 'debug',
   },
-  // 配置图片域名白名单
-  images: {
-    domains: ['ynnai.com', 'test.ynnai.com', 'localhost', 'ynnai-beat-1-2-3n8p.vercel.app'],
+  onDemandEntries: {
+    // 页面保持活跃状态的时间
+    maxInactiveAge: 25 * 1000,
+    // 同时保持活跃的页面数
+    pagesBufferLength: 2,
   },
-  // 生产环境配置
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on'
-          }
-        ],
-      },
-    ]
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      // 在开发环境启用详细日志
+      config.infrastructureLogging = {
+        level: 'verbose',
+        debug: true
+      }
+    }
+    return config
   }
 }
 
