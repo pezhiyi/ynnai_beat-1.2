@@ -1,7 +1,1 @@
-{
-  "/_app": "pages/_app.js",
-  "/_error": "pages/_error.js",
-  "/_document": "pages/_document.js",
-  "/draw": "pages/draw.js",
-  "/": "pages/index.js"
-}
+{"/_app":"pages/_app.js","/api/download":"pages/api/download.js","/_error":"pages/_error.js","/api/edit/crop":"pages/api/edit/crop.js","/_document":"pages/_document.js","/404":"pages/404.html","/api/edit/remove-bg":"pages/api/edit/remove-bg.js","/api/edit/resize":"pages/api/edit/resize.js","/api/edit/rotate":"pages/api/edit/rotate.js","/api/effects/artistic":"pages/api/effects/artistic.js","/api/effects/cartoon":"pages/api/effects/cartoon.js","/api/effects/filter":"pages/api/effects/filter.js","/api/effects/style":"pages/api/effects/style.js","/api/enhance/colorize":"pages/api/enhance/colorize.js","/api/enhance/denoise":"pages/api/enhance/denoise.js","/api/enhance/hdr":"pages/api/enhance/hdr.js","/api/image/compress":"pages/api/image/compress.js","/api/enhance/sharpen":"pages/api/enhance/sharpen.js","/api/image/format":"pages/api/image/format.js","/api/image/matting":"pages/api/image/matting.js","/api/image/resize":"pages/api/image/resize.js","/api/portrait/aging":"pages/api/portrait/aging.js","/api/portrait/retouch":"pages/api/portrait/retouch.js","/api/portrait/beauty":"pages/api/portrait/beauty.js","/api/upload":"pages/api/upload.js","/api/portrait/swap":"pages/api/portrait/swap.js","/api/utils/analyze":"pages/api/utils/analyze.js","/api/utils/download":"pages/api/utils/download.js","/api/utils/metadata":"pages/api/utils/metadata.js","/api/utils/upload":"pages/api/utils/upload.js","/draw":"pages/draw.html","/":"pages/index.html","/api/image/enhance":"pages/api/image/enhance.js"}

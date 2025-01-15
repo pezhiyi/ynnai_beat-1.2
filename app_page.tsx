@@ -1,4 +1,4 @@
-import LogoAnimation from '../components/LogoAnimation'
+import LogoAnimation from './components/LogoAnimation'
 
 export default function Home() {
   return (
@@ -7,4 +7,3 @@ export default function Home() {
     </main>
   )
 }
-
