@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 
 export default function Navbar() {
@@ -11,7 +12,16 @@ export default function Navbar() {
     >
       <div className="nav-content">
         <Link href="/" className="nav-logo">
-          <span className="ynn">Ynn</span>
+          <div className="logo-wrapper">
+            <Image
+              src="/images/logo_all.png"
+              alt="YNN Logo"
+              width={86}
+              height={29}
+              priority
+              style={{ objectFit: 'contain' }}
+            />
+          </div>
         </Link>
       </div>
     </motion.nav>

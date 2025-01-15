@@ -6,10 +6,14 @@
   text-align: center;
   max-width: 800px;
   margin: 0 auto;
-  background: linear-gradient(135deg, #4F46E5, #7C3AED, #C084FC);
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(255, 255, 255, 0.9) 100%
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 4px 8px rgba(124, 58, 237, 0.25));
+  filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.2));
   position: relative;
   letter-spacing: -0.02em;
   white-space: nowrap;
@@ -23,7 +27,10 @@
   transform: translateX(-50%);
   width: 120px;
   height: 3px;
-  background: linear-gradient(90deg, #4F46E5, #7C3AED);
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.8),
+    rgba(255, 255, 255, 0.3)
+  );
   border-radius: 2px;
   opacity: 0.8;
 }
@@ -31,7 +38,7 @@
 /* 副标语样式 */
 .sub-slogan {
   font-size: 1.5rem;
-  color: #4B5563;
+  color: rgba(255, 255, 255, 0.8);
   text-align: center;
   max-width: 600px;
   margin: 1.5rem auto 0;
@@ -101,33 +108,44 @@
 /* 按钮容器样式 */
 .cta-buttons {
   display: flex;
-  gap: 1.5rem;
+  gap: 2rem;
   justify-content: center;
   margin: 2.5rem 0;
 }
 
 /* 主按钮样式 */
 .button.primary {
-  background: var(--gradient-1);
-  color: #ffffff;
+  background: linear-gradient(135deg,
+    rgba(26, 35, 126, 0.95),
+    rgba(49, 27, 146, 0.95)
+  );
+  color: rgba(255, 255, 255, 1);
   font-size: 1.35rem;
-  padding: 1.4rem 4rem;
+  padding: 1.4rem 4.5rem;
   border-radius: 1.2rem;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   position: relative;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  font-weight: 600;
+  transition: all 0.4s cubic-bezier(0.215, 0.61, 0.355, 1);
+  font-weight: 700;
   letter-spacing: 0.02em;
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
-  cursor: pointer;
-  pointer-events: auto;
-  opacity: 1;
+  box-shadow: 
+    0 4px 24px -1px rgba(26, 35, 126, 0.3),
+    0 12px 48px -2px rgba(49, 27, 146, 0.2),
+    0 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  backdrop-filter: blur(10px);
+  font-family: "PingFang SC", "Microsoft YaHei", "微软雅黑", sans-serif;
 }
 
 .button.primary:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(124, 58, 237, 0.3);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 
+    0 8px 32px -2px rgba(26, 35, 126, 0.35),
+    0 20px 64px -4px rgba(49, 27, 146, 0.25),
+    0 0 2px 0 rgba(255, 255, 255, 0.25) inset;
+  border-color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 1);
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
 }
 
 .button.primary::before {
@@ -140,37 +158,83 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.3),
     transparent
   );
-  transition: 0.5s;
+  transition: 0.6s cubic-bezier(0.215, 0.61, 0.355, 1);
 }
 
 .button.primary:hover::before {
   left: 100%;
 }
 
+.button.primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1.2rem;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
 /* 次要按钮样式 */
 .button.secondary {
-  background: rgba(255, 255, 255, 0.9);
-  color: #4F46E5;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 1.35rem;
   padding: 1.4rem 4rem;
   border-radius: 1.2rem;
-  border: 2px solid #4F46E5;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(10px);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s cubic-bezier(0.215, 0.61, 0.355, 1);
   font-weight: 600;
   letter-spacing: 0.02em;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1);
+  box-shadow: 
+    0 4px 24px -1px rgba(0, 0, 0, 0.1),
+    0 12px 48px -2px rgba(0, 0, 0, 0.05),
+    0 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+  position: relative;
+  overflow: hidden;
 }
 
 .button.secondary:hover {
-  background: rgba(79, 70, 229, 0.1);
-  border-color: #4338CA;
-  color: #4338CA;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 1);
   transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.15);
+  box-shadow: 
+    0 8px 32px -2px rgba(0, 0, 0, 0.15),
+    0 20px 64px -4px rgba(0, 0, 0, 0.1),
+    0 0 2px 0 rgba(255, 255, 255, 0.1) inset;
+}
+
+.button.secondary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1.2rem;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 /* 底部内容区域 */
@@ -262,22 +326,54 @@
 }
 
 .news-item {
-  background: var(--glass-bg);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
   border-radius: 1.2rem;
-  box-shadow: var(--glass-shadow);
-  border: 1px solid var(--glass-border);
+  box-shadow: 
+    0 4px 24px -1px rgba(0, 0, 0, 0.2),
+    0 12px 48px -2px rgba(0, 0, 0, 0.1),
+    0 0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 2px 4px 0 rgba(255, 255, 255, 0.05) inset;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   overflow: hidden;
   display: flex;
   align-items: center;
   cursor: pointer;
-  transition: all 0.4s ease;
+  transition: all 0.4s cubic-bezier(0.215, 0.61, 0.355, 1);
+  padding: 0.75rem;
+  transform: translateY(0);
+  position: relative;
+  z-index: 1;
+}
+
+.news-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 1.2rem;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 .news-item:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(124, 58, 237, 0.15);
-  border-color: rgba(124, 58, 237, 0.2);
+  transform: translateY(-6px);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 
+    0 8px 32px -2px rgba(0, 0, 0, 0.25),
+    0 20px 64px -4px rgba(0, 0, 0, 0.15),
+    0 0 1px 0 rgba(255, 255, 255, 0.2) inset,
+    0 4px 8px 0 rgba(255, 255, 255, 0.1) inset;
 }
 
 .news-image {
@@ -287,6 +383,28 @@
   background-position: center;
   position: relative;
   flex-shrink: 0;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transition: all 0.4s ease;
+}
+
+.news-item:hover .news-image {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  transform: scale(1.02);
+}
+
+.news-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.2));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.news-item:hover .news-image::after {
+  opacity: 1;
 }
 
 .news-content {
@@ -297,24 +415,28 @@
 
 .news-date {
   font-size: 0.9rem;
-  color: #6b7280;
+  color: rgba(255, 255, 255, 0.6);
   display: block;
   margin-bottom: 0.5rem;
+  font-weight: 500;
 }
 
 .news-title {
   font-size: 1.4rem;
   font-weight: 600;
-  color: var(--text-color);
   margin-bottom: 0.5rem;
-  background: var(--gradient-1);
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.95),
+    rgba(255, 255, 255, 0.85)
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  transition: all 0.3s ease;
 }
 
 .news-desc {
   font-size: 1rem;
-  color: #6b7280;
+  color: rgba(255, 255, 255, 0.7);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -324,15 +446,16 @@
 
 .news-arrow {
   font-size: 1.5rem;
-  color: var(--primary-color);
+  color: rgba(255, 255, 255, 0.6);
   margin: 0 2rem;
   opacity: 0.6;
   transition: all 0.3s ease;
 }
 
 .news-item:hover .news-arrow {
-  opacity: 1;
+  opacity: 0.9;
   transform: translateX(5px);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 /* 响应式设计 */

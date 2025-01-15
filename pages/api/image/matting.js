@@ -1,124 +1,176 @@
-import Logger from '@/utils/api/logger';
-import { APIError, ErrorTypes } from '@/utils/api/error-handler';
-import { success, error } from '@/utils/api/response';
 import COS from 'cos-nodejs-sdk-v5';
-import xml2js from 'xml2js';
+import Logger from '@/utils/api/logger';
 
+// 初始化 COS 实例
 const cos = new COS({
   SecretId: process.env.TENCENT_CLOUD_SECRET_ID,
-  SecretKey: process.env.TENCENT_CLOUD_SECRET_KEY,
+  SecretKey: process.env.TENCENT_CLOUD_SECRET_KEY
 });
+
+// 添加一个验证函数检查图片是否成功上传
+async function verifyUpload(params) {
+  const logger = Logger.forRequest();
+  
+  return new Promise((resolve, reject) => {
+    cos.headObject({
+      Bucket: params.Bucket,
+      Region: params.Region,
+      Key: params.Key
+    }, (err, data) => {
+      if (err) {
+        logger.error('验证上传失败', {
+          error: err,
+          params: params
+        });
+        reject(err);
+        return;
+      }
+      
+      logger.info('验证上传成功', {
+        key: params.Key,
+        contentLength: data.headers['content-length'],
+        contentType: data.headers['content-type']
+      });
+      
+      resolve(data);
+    });
+  });
+}
 
 export default async function handler(req, res) {
   const logger = Logger.forRequest();
   
   try {
-    logger.info('API Request Started', {
-      method: req.method,
-      url: req.url,
-      headers: {
-        'content-type': req.headers['content-type'],
-        'user-agent': req.headers['user-agent']
-      }
-    });
-
     if (req.method !== 'POST') {
-      throw new APIError(
-        ErrorTypes.METHOD_NOT_ALLOWED.code,
-        ErrorTypes.METHOD_NOT_ALLOWED.message,
-        ErrorTypes.METHOD_NOT_ALLOWED.status
-      );
+      throw new Error('Method not allowed');
     }
 
     const { image_base64 } = req.body;
     
-    logger.info('Image Data Received', {
-      hasImage: !!image_base64,
-      dataLength: image_base64?.length || 0,
-      truncatedData: image_base64?.substring(0, 50) + '...'
-    });
-
     if (!image_base64) {
-      throw new APIError(
-        ErrorTypes.INVALID_INPUT.code,
-        '缺少图片数据',
-        ErrorTypes.INVALID_INPUT.status
-      );
+      throw new Error('Missing image data');
     }
 
-    logger.info('Processing Request');
+    // 记录上传开始
+    logger.info('开始上传图片', {
+      timestamp: new Date().toISOString()
+    });
 
-    const bucket = 'ynnai-1256269009';
-    const region = 'ap-guangzhou';
-    const key = 'ynnai_koutu';
+    const timestamp = Date.now();
+    const originalKey = `original_${timestamp}.jpg`;
+    const processedKey = `matting_${timestamp}.png`;
 
-    const params = {
-      Bucket: bucket,
-      Region: region,
-      Key: key,
+    const uploadParams = {
+      Bucket: process.env.TENCENT_CLOUD_BUCKET,
+      Region: process.env.TENCENT_CLOUD_REGION,
+      Key: originalKey,
       Body: Buffer.from(image_base64, 'base64'),
       Headers: {
         'Pic-Operations': JSON.stringify({
           is_pic_info: 1,
           rules: [{
-            fileid: 'exampleobject',
+            fileid: processedKey,
             rule: 'ci-process=AIPicMatting'
           }]
         })
       }
     };
 
-    cos.putObject(params, (err, data) => {
-      if (err) {
-        logger.error('COS Upload Failed', { error: err });
-        throw new APIError(
-          ErrorTypes.INTERNAL_ERROR.code,
-          err.message,
-          ErrorTypes.INTERNAL_ERROR.status
-        );
-      }
+    // 记录上传参数（排除敏感信息）
+    logger.info('上传参数', {
+      bucket: uploadParams.Bucket,
+      region: uploadParams.Region,
+      key: uploadParams.Key,
+      bodySize: uploadParams.Body.length,
+      timestamp: new Date().toISOString()
+    });
 
-      xml2js.parseString(data.Body, (parseErr, result) => {
-        if (parseErr) {
-          logger.error('XML Parsing Failed', { error: parseErr });
-          throw new APIError(
-            ErrorTypes.INTERNAL_ERROR.code,
-            'XML 解析失败',
-            ErrorTypes.INTERNAL_ERROR.status
-          );
+    // 执行上传
+    const result = await new Promise((resolve, reject) => {
+      cos.putObject(uploadParams, (err, data) => {
+        if (err) {
+          logger.error('上传失败', {
+            error: err,
+            timestamp: new Date().toISOString()
+          });
+          reject(err);
+          return;
         }
-
-        const processResults = result.UploadResult.ProcessResults[0].Object[0];
-        const processedImageLocation = processResults.Location[0];
-
-        logger.info('COS Upload Success', { data });
-
-        return res.status(200).json(success(
-          { foreground_image: processedImageLocation },
-          '抠图处理成功',
-          logger.requestId,
-          Date.now() - logger.startTime
-        ));
+        
+        logger.info('上传成功', {
+          data: data,
+          timestamp: new Date().toISOString()
+        });
+        
+        resolve(data);
       });
     });
 
-  } catch (err) {
-    logger.error('Request Failed', {
-      error: {
-        message: err.message,
-        stack: err.stack?.split('\n'),
-        type: err.name
-      },
-      timeElapsed: `${Date.now() - logger.startTime}ms`
+    // 验证上传结果
+    try {
+      await verifyUpload(uploadParams);
+    } catch (verifyErr) {
+      logger.error('上传验证失败', {
+        error: verifyErr,
+        timestamp: new Date().toISOString()
+      });
+      throw verifyErr;
+    }
+
+    // 构建返回URL
+    const processedImageUrl = `https://${process.env.TENCENT_CLOUD_BUCKET_DOMAIN}/${processedKey}`;
+    
+    // 获取处理后的图片数据
+    const processedImageData = await new Promise((resolve, reject) => {
+      cos.getObject({
+        Bucket: process.env.TENCENT_CLOUD_BUCKET,
+        Region: process.env.TENCENT_CLOUD_REGION,
+        Key: processedKey,
+      }, (err, data) => {
+        if (err) {
+          logger.error('获取处理后图片失败', {
+            error: err,
+            timestamp: new Date().toISOString()
+          });
+          reject(err);
+          return;
+        }
+        
+        // 将图片数据转换为 base64
+        const base64Data = data.Body.toString('base64');
+        resolve(base64Data);
+      });
     });
 
-    const errorResponse = error(
-      err.code || ErrorTypes.INTERNAL_ERROR.code,
-      err.message || ErrorTypes.INTERNAL_ERROR.message,
-      logger.requestId,
-      Date.now() - logger.startTime
-    );
+    // 记录完整处理结果
+    logger.info('处理完成', {
+      originalKey,
+      processedKey,
+      processedImageUrl,
+      result,
+      timestamp: new Date().toISOString()
+    });
 
-    return res.status(err.status || 500).json(errorResponse);
+    return res.status(200).json({
+      success: true,
+      data: {
+        foreground_image: `data:image/png;base64,${processedImageData}`
+      },
+      message: '抠图处理成功'
+    });
+
+  } catch (err) {
+    logger.error('请求失败', {
+      error: {
+        message: err.message,
+        stack: err.stack
+      },
+      timestamp: new Date().toISOString()
+    });
+
+    return res.status(500).json({
+      success: false,
+      message: err.message || '处理失败'
+    });
   }
 }

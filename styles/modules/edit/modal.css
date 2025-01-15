@@ -25,8 +25,11 @@
     0 20px 60px rgba(0, 0, 0, 0.05),
     0 1px 2px rgba(255, 255, 255, 0.1) inset,
     0 -1px 2px rgba(0, 0, 0, 0.05) inset;
-  max-width: 90vw;
-  max-height: 90vh;
+  width: min(85vw, 1200px);
+  height: min(85vh, 800px);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   transform-origin: center;
   animation: floatUp 0.4s ease-out;
 }
@@ -66,7 +69,7 @@
 
 .modal-header {
   position: absolute;
-  top: 0.75rem;
+  top: 6%;
   right: 0.75rem;
   z-index: 10;
 }
@@ -469,5 +472,85 @@
   .slider-value {
     min-width: 2.2rem;
     font-size: 0.75rem;
+  }
+}
+
+.eraser-preview {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 10;
+}
+
+.slider-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.edit-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: #e0e0e0;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.edit-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.edit-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.slider-value {
+  min-width: 45px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+/* 添加响应式布局 */
+@media (max-width: 1440px) {
+  .modal-overlay {
+    width: min(85vw, 1000px);
+    height: min(85vh, 700px);
+  }
+}
+
+@media (max-width: 1024px) {
+  .modal-overlay {
+    width: min(90vw, 800px);
+    height: min(90vh, 600px);
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    width: 92vw;
+    height: 80vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-overlay {
+    width: 95vw;
+    height: 75vh;
   }
 } 

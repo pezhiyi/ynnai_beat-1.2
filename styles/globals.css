@@ -25,9 +25,9 @@
 /* 全局变量 */
 :root {
   /* 基础颜色 */
-  --primary-color: #7C3AED;
-  --background-color: #f8f7ff;
-  --text-color: #1f2937;
+  --primary-color: #1a237e;
+  --secondary-color: #311b92;
+  --text-color: rgba(255, 255, 255, 0.9);
   
   /* 渐变色 */
   --gradient-1: linear-gradient(135deg, #7C3AED, #C084FC);
@@ -35,9 +35,10 @@
   --accent-gradient: linear-gradient(135deg, #4F46E5, #7C3AED);
   
   /* 界面效果 */
-  --glass-bg: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.4);
-  --glass-shadow: 0 8px 32px rgba(26, 26, 27, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px rgba(26, 26, 27, 0.15);
+  --glass-blur: 12px;
   
   /* 按钮样式 */
   --button-primary-bg: var(--gradient-1);
@@ -73,11 +74,39 @@
 
 /* 基础样式 */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  color: var(--text-color);
-  background: linear-gradient(135deg, #f8f7ff 0%, #f0f7ff 50%, #f5f3ff 100%);
-  line-height: 1.6;
+  margin: 0;
+  padding: 0;
   min-height: 100vh;
+  background: linear-gradient(
+    135deg,
+    var(--primary-color) 0%,
+    #000000 35%,
+    var(--secondary-color) 65%,
+    #1a1a2e 100%
+  );
+  background-attachment: fixed;
+  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  line-height: 1.6;
+}
+
+/* 添加一个微妙的渐变叠加层 */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(26, 35, 126, 0.15) 0%,
+    rgba(0, 0, 0, 0.2) 50%,
+    rgba(49, 27, 146, 0.15) 100%
+  );
+  pointer-events: none;
+  z-index: -1;
 }
 
 /* 全局链接样式 */
@@ -200,9 +229,36 @@ input, textarea, select {
 /* 通用工具类 */
 .glass-effect {
   background: var(--glass-bg);
-    backdrop-filter: blur(10px);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
+  transition: all 0.3s ease;
+}
+
+.glass-effect:hover {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(calc(var(--glass-blur) * 1.2));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 1.2));
+}
+
+/* 全局毛玻璃背景效果 */
+.glass-background {
+  position: relative;
+}
+
+.glass-background::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: inherit;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  z-index: -1;
+  transition: backdrop-filter 0.3s ease;
 }
 
 .flex-center {
