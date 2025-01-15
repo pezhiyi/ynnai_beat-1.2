@@ -1,11 +1,14 @@
 /* 导航栏样式 */
 .navbar {
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 100;
-  background: linear-gradient(135deg, #1a237e 0%, #000000 50%, #311b92 100%);
-  padding: 0.6rem 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .nav-content {
@@ -24,6 +27,11 @@
   transition: all 0.3s ease;
   padding: 0.25rem 0;
   position: relative;
+}
+
+.nav-logo img {
+  height: 2rem;
+  width: auto;
 }
 
 .logo-wrapper {
@@ -113,6 +121,10 @@
   .nav-content {
     height: 2rem;
   }
+  
+  .nav-logo img {
+    height: 1.9rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -123,4 +135,8 @@
   .nav-content {
     height: 1.8rem;
   }
-} 
+  
+  .nav-logo {
+    transform: scale(0.95);
+  }
+}

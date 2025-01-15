@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Layout from '@/components/Layout/Layout';
+import LogoAnimation from '@/components/LogoAnimation';
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
@@ -149,78 +150,11 @@ export default function Home() {
         {/* Logo区域 */}
         <motion.div 
           className="logo-container"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1, ease: "easeOut" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1 }}
         >
-          <motion.div
-            className="logo-wrapper"
-            initial={{ opacity: 0, y: -30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, delay: 0.3 }}
-          >
-            <motion.h1 
-              className="logo"
-              whileHover={{ scale: 1.02 }}
-              transition={{ duration: 0.4 }}
-            >
-              <motion.span 
-                className="ynn"
-                data-text="Ynn"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                Ynn
-              </motion.span>
-              <motion.span 
-                className="dot"
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, delay: 0.4 }}
-              >
-                .
-              </motion.span>
-              <motion.span 
-                className="ai"
-                data-text="AI"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.6 }}
-              >
-                AI
-              </motion.span>
-            </motion.h1>
-            <motion.div 
-              className="logo-shine"
-              animate={{ 
-                x: ["-200%", "200%"],
-                opacity: [0, 0.8, 0]
-              }}
-              transition={{ 
-                duration: 2.5,
-                repeat: Infinity,
-                repeatDelay: 5
-              }}
-            />
-          </motion.div>
-          
-          <motion.h2 
-            className="main-slogan"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-          >
-            人人都是超级设计师
-          </motion.h2>
-          <motion.p 
-            className="sub-slogan"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
-          >
-            AI驱动一站式定制商品落地
-          </motion.p>
+          <LogoAnimation />
         </motion.div>
 
         {/* 按钮区域 */}
@@ -333,4 +267,3 @@ export default function Home() {
     </Layout>
   );
 }
-

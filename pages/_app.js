@@ -19,9 +19,10 @@ export default function App({ Component, pageProps }) {
         <meta name="theme-color" content="#ffffff" />
         <meta name="background-color" content="#ffffff" />
       </Head>
+      <div className="background-container" />
       <ErrorBoundary>
         <Component {...pageProps} />
       </ErrorBoundary>
     </>
   );
-} 
+}

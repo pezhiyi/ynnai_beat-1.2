@@ -1,0 +1,294 @@
+.logo-animation-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  transition: transform 0.3s ease;
+  user-select: none;
+  -webkit-user-select: none;  /* Safari */
+  -moz-user-select: none;     /* Firefox */
+  -ms-user-select: none;      /* IE/Edge */
+  touch-action: none;  /* 禁用默认触摸行为 */
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  will-change: transform;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.logo-animation-container:hover {
+  transform: scale(1.02);
+}
+
+/* 添加点击反馈效果 */
+.logo-animation-container:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
+}
+
+.logo-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: min(92vw, 1000px);
+}
+
+.logo-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: -2.5rem;
+  position: relative;
+  width: 100%;
+}
+
+.ynn-container {
+  position: relative;
+  margin-right: -3.5rem;
+  z-index: 2;
+  transform: translateX(1.25rem);
+  width: clamp(260px, 42vw, 420px);
+}
+
+.ynn-image {
+  object-fit: contain;
+  width: 100% !important;
+  height: auto !important;
+}
+
+.ai-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  transform: translateX(-1.25rem);
+  width: clamp(135px, 22vw, 220px);
+}
+
+.ai-image-container {
+  position: relative;
+  width: 100%;
+}
+
+.ai-image {
+  object-fit: contain;
+  width: 100% !important;
+  height: auto !important;
+}
+
+.dot-container {
+  position: absolute;
+  top: 0.5rem;
+  left: 71%;
+  z-index: 3;
+  width: clamp(21px, 3.5vw, 35px);
+}
+
+.dot-image {
+  object-fit: contain;
+  width: 100% !important;
+  height: auto !important;
+}
+
+.slogan-container {
+  text-align: center;
+  margin-top: -4.5rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.slogan-text {
+  margin: 0;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.slogan-primary {
+  font-size: clamp(2.5rem, 6vw, 3.5rem);
+  color: #ffffff;
+  text-transform: none;
+  font-family: "PingFang SC", "SF Pro SC", "SF Pro Text", "Microsoft YaHei", "Noto Sans SC", -apple-system, system-ui, sans-serif;
+  font-weight: 900;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: 0.18em;
+  position: relative;
+  padding: 0.5rem 0;
+  text-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 4px 8px rgba(124, 58, 237, 0.2),
+    0 8px 16px rgba(124, 58, 237, 0.1);
+}
+
+.slogan-primary::after {
+  content: "";
+  position: absolute;
+  bottom: -0.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    #ffffff 50%, 
+    transparent 100%
+  );
+  opacity: 0.6;
+}
+
+.slogan-secondary {
+  font-size: clamp(1.5rem, 3.5vw, 2rem);
+  color: rgba(255, 255, 255, 0.95);
+  font-family: "PingFang SC", "SF Pro SC", "SF Pro Text", "Microsoft YaHei", "Noto Sans SC", -apple-system, system-ui, sans-serif;
+  font-weight: 700;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: 0.1em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+/* 响应式设计 - 平板 */
+@media (max-width: 768px) {
+  .logo-content {
+    gap: -2.25rem;
+  }
+
+  .ynn-container {
+    margin-right: -3rem;
+    transform: translateX(1rem);
+  }
+
+  .ai-container {
+    transform: translateX(-1rem);
+  }
+
+  .dot-container {
+    left: 82%;
+  }
+
+  .slogan-container {
+    margin-top: -3.5rem;
+    gap: 1.75rem;
+  }
+
+  .slogan-primary {
+    font-size: clamp(2.25rem, 5.5vw, 3.25rem);
+    letter-spacing: 0.15em;
+  }
+
+  .slogan-secondary {
+    font-size: clamp(1.35rem, 3.25vw, 1.85rem);
+    letter-spacing: 0.08em;
+  }
+
+  .slogan-primary::after {
+    width: 90%;
+  }
+  
+  .logo-animation-container {
+    padding: 1.5rem;
+  }
+  
+  /* 确保移动端也有触摸反馈 */
+  .logo-animation-container:active,
+  .logo-animation-container:focus {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+}
+
+/* 响应式设计 - 小屏幕 */
+@media (max-width: 480px) {
+  .logo-content-wrapper {
+    gap: 0.5rem;
+  }
+
+  .logo-content {
+    gap: -2rem;
+  }
+
+  .ynn-container {
+    margin-right: -2.5rem;
+    transform: translateX(0.5rem);
+  }
+  
+  .ai-container {
+    transform: translateX(-0.5rem);
+  }
+  
+  .dot-container {
+    top: 0.25rem;
+    left: 72%;
+  }
+
+  .slogan-container {
+    margin-top: -2.5rem;
+    gap: 1.5rem;
+  }
+
+  .slogan-primary {
+    font-size: clamp(2rem, 5vw, 3rem);
+    letter-spacing: 0.12em;
+  }
+
+  .slogan-secondary {
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
+    letter-spacing: 0.06em;
+  }
+
+  .slogan-primary::after {
+    width: 95%;
+  }
+}
+
+/* 响应式设计 - 大屏幕 */
+@media (min-width: 1440px) {
+  .logo-content-wrapper {
+    max-width: 1200px;
+  }
+}
+
+/* 移动端触摸优化 */
+@media (hover: none) {
+  .logo-animation-container {
+    -webkit-touch-callout: none;
+    touch-action: none;
+    min-height: 44px; /* 确保触摸目标足够大 */
+    padding: 12px; /* 增加可点击区域 */
+  }
+  
+  .logo-animation-container:active {
+    transform: scale(0.98) translateZ(0);
+  }
+  
+  /* 添加触摸反馈效果 */
+  .logo-animation-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+  
+  .logo-animation-container:active::after {
+    opacity: 1;
+  }
+}

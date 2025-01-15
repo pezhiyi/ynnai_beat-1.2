@@ -7,6 +7,7 @@
 @import './modules/components/logo.css';
 @import './modules/components/navbar.css';
 @import './modules/components/footer.css';
+@import './modules/components/logo-animation.css';
 
 /* 画布相关模块 */
 @import './modules/canvas/base.css';
@@ -77,6 +78,21 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* 背景容器 */
+.background-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
   background: linear-gradient(
     135deg,
     var(--primary-color) 0%,
@@ -84,15 +100,19 @@ body {
     var(--secondary-color) 65%,
     #1a1a2e 100%
   );
-  background-attachment: fixed;
-  color: var(--text-color);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  line-height: 1.6;
+  transform: translateZ(0);
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* 内容容器 */
+#__next {
+  position: relative;
+  z-index: 1;
 }
 
 /* 添加一个微妙的渐变叠加层 */
-body::before {
+.background-container::before {
   content: '';
   position: fixed;
   top: 0;
@@ -126,7 +146,7 @@ button {
   background: none;
   cursor: pointer;
   font: inherit;
-    padding: 0;
+  padding: 0;
   color: inherit;
   transition: all 0.3s ease;
 }
@@ -135,7 +155,7 @@ button:focus {
   outline: none;
 }
 
-button:disabled {
+button:disabled:not(.primary) {
   cursor: not-allowed;
   opacity: 0.5;
 }
