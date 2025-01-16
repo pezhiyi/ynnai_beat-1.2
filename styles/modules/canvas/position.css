@@ -1,0 +1,532 @@
+/* Canvas position styles */
+@media (max-width: 968px) {
+  .canvas-container {
+    margin-top: 10vh !important;
+    height: calc(100vh - 160px - 10vh) !important;
+    align-items: flex-start !important;
+    padding: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    overflow: visible !important;
+  }
+  
+  .canvas-wrapper {
+    position: relative !important;
+    width: 75vh !important;
+    max-width: 90vw !important;
+    height: 100vh !important;
+    max-height: calc(133.33vw) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  .draw-canvas {
+    position: relative;
+    touch-action: none; /* 防止触摸事件的默认行为 */
+  }
+
+  .draw-canvas.erasing {
+    cursor: none; /* 在擦除模式下隐藏默认鼠标指针 */
+  }
+
+  .eraser-preview {
+    position: fixed; /* 改为fixed以跟随鼠标/触摸位置 */
+    pointer-events: none;
+    z-index: 1000;
+    width: 40px;
+    height: 40px;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.1s ease-out;
+    mix-blend-mode: difference; /* 确保在任何背景色上都可见 */
+  }
+
+  .eraser-preview::before,
+  .eraser-preview::after {
+    content: '';
+    position: absolute;
+    background: rgba(255, 255, 255, 0.8);
+    mix-blend-mode: difference;
+  }
+
+  .eraser-preview::before {
+    width: 100%;
+    height: 2px;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .eraser-preview::after {
+    width: 2px;
+    height: 100%;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* 图层按钮样式 */
+  .layers-container {
+    position: absolute !important;
+    top: 1vh !important;
+    right: 16px !important;
+    z-index: 10 !important;
+  }
+
+  .canvas-layers {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: none !important;
+    border-radius: 12px !important;
+    width: 30px !important;
+    height: 30px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    padding: 0 !important;
+  }
+
+  .canvas-layers:hover {
+    background: white !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  .button-icon {
+    width: 16px !important;
+    height: 16px !important;
+    stroke: #333 !important;
+    stroke-width: 2 !important;
+  }
+
+  .layer-count {
+    position: absolute !important;
+    top: -6px !important;
+    right: -6px !important;
+    background: #007AFF !important;
+    color: white !important;
+    border-radius: 8px !important;
+    min-width: 18px !important;
+    height: 18px !important;
+    font-size: 11px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-weight: bold !important;
+    padding: 0 4px !important;
+  }
+}
+
+/* 更小屏幕的特殊处理 */
+@media (max-width: 480px) {
+  .canvas-container {
+    margin-top: 5vh !important;
+    height: calc(100vh - 160px - 5vh) !important;
+  }
+  
+  .canvas-wrapper {
+    width: 80vh !important;
+    max-width: 95vw !important;
+  }
+
+  /* 调整小屏幕上的图层按钮大小 */
+  .canvas-layers {
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 10px !important;
+  }
+
+  .button-icon {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  .layer-count {
+    min-width: 13px !important;
+    height: 13px !important;
+    font-size: 10px !important;
+    border-radius: 6px !important;
+  }
+}
+
+/* 编辑栏内容容器 */
+.edit-modal {
+  position: fixed;
+  top: calc(var(--navbar-height, 60px) - 20px); /* 减少与导航栏的距离 */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 20px;
+  z-index: 100;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: none;
+}
+
+/* 编辑栏背景 */
+.modal-backdrop {
+  position: fixed;
+  top: calc(var(--navbar-height, 60px) - 20px); /* 背景也跟着上移 */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 10;
+}
+
+/* 编辑画布容器响应式样式 */
+.edit-canvas-container {
+  flex: 1;
+  min-height: 200px;
+  max-height: calc(100vh - var(--navbar-height, 60px) + 20px - 200px); /* 调整最大高度 */
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin: 10px 0;
+}
+
+/* 编辑画布响应式样式 */
+.edit-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* 工具栏容器 */
+.edit-tools {
+  margin-top: 5px; /* 进一步减小顶部边距 */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  width: 100%;
+  position: relative;
+  padding-top: 40px; /* 为拖动条预留空间 */
+}
+
+/* 工具图标容器 */
+.tool-icons {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  padding-bottom: 5px; /* 为滚动条预留空间 */
+  flex: 1;
+}
+
+/* 隐藏滚动条但保持功能 */
+.tool-icons::-webkit-scrollbar {
+  display: none;
+}
+
+/* 工具按钮 */
+.tool-button {
+  flex: 0 0 auto;
+  min-width: fit-content;
+  white-space: nowrap;
+  padding: 8px 16px !important;
+  font-size: 0.9rem !important;
+}
+
+/* 操作按钮容器 */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+/* 拖动条容器 */
+.slider-controls {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  z-index: 1;
+  height: 40px;
+  padding: 0;
+}
+
+/* 特定功能的拖动条组 */
+.slider-group[data-type="erase"],
+.slider-group[data-type="zoom"],
+.slider-group[data-type="rotate"] {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  transform: none;
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  height: 40px;
+  width: 100%;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 0;
+}
+
+/* 拖动条基础样式 */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  outline: none;
+  margin: 0;
+  cursor: pointer;
+}
+
+/* 拖动条滑块样式 */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* 拖动条轨道样式 */
+input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+/* 数值显示样式 */
+.slider-value {
+  min-width: 45px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+/* 响应式调整 */
+@media screen and (max-width: 768px) {
+  .slider-group[data-type="erase"],
+  .slider-group[data-type="zoom"],
+  .slider-group[data-type="rotate"] {
+    height: 36px;
+    padding: 0 15px;
+  }
+
+  .slider-value {
+    min-width: 40px;
+    font-size: 0.85rem;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    width: 14px;
+    height: 14px;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .slider-group[data-type="erase"],
+  .slider-group[data-type="zoom"],
+  .slider-group[data-type="rotate"] {
+    height: 32px;
+    padding: 0 12px;
+  }
+
+  .slider-value {
+    min-width: 36px;
+    font-size: 0.8rem;
+    padding: 2px 4px;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    width: 12px;
+    height: 12px;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+/* 拖动条容器 */
+.slider-container {
+  position: relative;
+  z-index: 1000; /* 提高拖动条容器层级 */
+}
+
+/* 拖动条样式 */
+input[type="range"] {
+  position: relative;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: #ddd;
+  outline: none;
+  border-radius: 2px;
+  z-index: 1000; /* 确保拖动条在最上层 */
+}
+
+/* 拖动条滑块样式 */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+input[type="range"]::-moz-range-thumb {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+/* 特定功能的拖动条组 */
+.slider-group[data-type="erase"],
+.slider-group[data-type="zoom"],
+.slider-group[data-type="rotate"] {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  height: 40px;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 0;
+}
+
+/* 拖动条基础样式 */
+.slider-group[data-type="zoom"] input[type="range"],
+.slider-group[data-type="rotate"] input[type="range"],
+.slider-group[data-type="erase"] input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+/* 响应式调整 */
+@media screen and (max-width: 768px) {
+  input[type="range"] {
+    height: 5px;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    width: 18px;
+    height: 18px;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  input[type="range"] {
+    height: 4px;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+  }
+
+  .slider-value {
+    font-size: 0.85rem;
+  }
+}
+
+/* 响应式调整 */
+@media screen and (max-width: 768px) {
+  .slider-group[data-type="erase"],
+  .slider-group[data-type="zoom"],
+  .slider-group[data-type="rotate"] {
+    height: 36px;
+    padding: 0 15px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .slider-group[data-type="erase"],
+  .slider-group[data-type="zoom"],
+  .slider-group[data-type="rotate"] {
+    height: 32px;
+    padding: 0 10px;
+  }
+}

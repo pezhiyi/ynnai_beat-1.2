@@ -1,0 +1,295 @@
+.ai-portrait-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  background: linear-gradient(
+    135deg,
+    rgba(26, 35, 126, 0.85) 0%,
+    rgba(0, 0, 0, 0.85) 35%,
+    rgba(49, 27, 146, 0.85) 65%,
+    rgba(26, 26, 46, 0.85) 100%
+  );
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 24px 24px 0 0;
+  padding: 24px 32px;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 85vh;
+  overflow-y: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.portrait-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+  padding: 5px;
+}
+
+.portrait-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 
+    inset 0 0 20px rgba(255, 255, 255, 0.05),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.portrait-option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(26, 35, 126, 0.2) 0%,
+    rgba(49, 27, 146, 0.2) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.portrait-option::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  right: -50%;
+  bottom: -50%;
+  background: linear-gradient(
+    45deg,
+    transparent 45%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 55%
+  );
+  transform: rotate(45deg);
+  transition: all 0.6s ease;
+  opacity: 0;
+}
+
+.portrait-option:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    inset 0 0 30px rgba(255, 255, 255, 0.1),
+    0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+.portrait-option:hover::before {
+  opacity: 1;
+}
+
+.portrait-option:hover::after {
+  opacity: 1;
+  transform: rotate(45deg) translate(100%, 100%);
+}
+
+.option-icon {
+  width: 48px;
+  height: 48px;
+  stroke-width: 1.8;
+  color: rgba(255, 255, 255, 0.9);
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+  position: relative;
+  z-index: 1;
+}
+
+.portrait-option:hover .option-icon {
+  transform: scale(1.1);
+}
+
+.option-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.option-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.option-subtitle {
+  font-size: 0.85rem;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.3px;
+}
+
+.portrait-option:hover .option-title {
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(255, 255, 255, 0.95) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0;
+  position: relative;
+}
+
+.modal-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(255, 255, 255, 0.9) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 
+    0 2px 10px rgba(255, 255, 255, 0.15),
+    0 0 20px rgba(255, 255, 255, 0.1);
+  margin-right: 40px;
+  margin-left: 20px;
+  position: relative;
+  letter-spacing: 0.5px;
+}
+
+.modal-title::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg,
+    rgba(255, 255, 255, 0.8) 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  border-radius: 1px;
+  opacity: 0.6;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.close-button {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  width: 42px;
+  height: 42px;
+  padding: 8px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 1);
+  opacity: 1;
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  backdrop-filter: blur(4px);
+  box-shadow: 
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.close-button:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 0 20px rgba(255, 255, 255, 0.2);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.close-button:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.close-button svg {
+  width: 30px;
+  height: 30px;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2));
+}
+
+/* 添加底部安全距离 */
+.safe-area-bottom {
+  height: env(safe-area-inset-bottom, 20px);
+}
+
+@media (max-width: 480px) {
+  .ai-portrait-modal {
+    padding: 20px 16px;
+  }
+
+  .portrait-options {
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .portrait-option {
+    padding: 20px 12px;
+    min-height: 120px;
+  }
+
+  .option-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 12px;
+  }
+
+  .option-title {
+    font-size: 1rem;
+  }
+
+  .modal-title {
+    font-size: 1.25rem;
+  }
+
+  .close-button {
+    padding: 12px;
+  }
+}
+
+/* 添加滚动条样式 */
+.ai-portrait-modal::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ai-portrait-modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ai-portrait-modal::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.ai-portrait-modal::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

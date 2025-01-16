@@ -1,0 +1,56 @@
+/* 全局滚动条样式 */
+* {
+  scrollbar-width: thin;  /* Firefox */
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;  /* Firefox */
+}
+
+/* Webkit浏览器的滚动条样式 */
+::-webkit-scrollbar {
+  width: 4px;  /* 垂直滚动条宽度 */
+  height: 4px;  /* 水平滚动条高度 */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* 针对移动设备的优化 */
+@media (max-width: 768px) {
+  * {
+    scrollbar-width: thin;
+  }
+  
+  ::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+}
+
+/* 针对小屏设备的进一步优化 */
+@media (max-width: 480px) {
+  * {
+    scrollbar-width: thin;
+  }
+  
+  ::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.35);
+  }
+}

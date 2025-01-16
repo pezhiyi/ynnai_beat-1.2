@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Layout from '@/components/Layout/Layout';
 import EditModal from '../components/edit/EditModal';
+import AIPortraitModal from '../components/AIPortraitModal';
 
 export default function Draw() {
   const canvasRef = useRef(null);
@@ -21,6 +22,7 @@ export default function Draw() {
   const [editMode, setEditMode] = useState(null);
   const [currentAngle, setCurrentAngle] = useState(0);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showAIPortraitModal, setShowAIPortraitModal] = useState(false);
 
   // 计算画布尺寸
   const calculateDimensions = () => {
@@ -210,25 +212,45 @@ export default function Draw() {
     }
   };
 
-  // 新增功能按钮处理函数
-  const handleAIPortrait = () => {
-    console.log('智能画像');
-  };
-
-  const handleStyleOverlay = () => {
-    console.log('风格叠加');
-  };
-
-  const handleProductSelect = () => {
-    console.log('商品选择');
-  };
-
-  const handleOrder = () => {
-    console.log('订单发货');
-  };
-
-  const handleArchive = () => {
-    console.log('存档仓库');
+  // 处理智能画像选择
+  const handlePortraitStyleSelect = async (styleId) => {
+    try {
+      console.log('开始处理风格选择:', styleId);
+      
+      // 获取画布图片数据
+      const imageBlob = await getCanvasImage();
+      
+      // 上传图片到服务端 API
+      const imageUrl = await uploadToCOS(imageBlob, styleId);
+      
+      // 关闭模态框
+      setShowAIPortraitModal(false);
+      
+      // 这里可以添加处理不同风格的逻辑
+      console.log('选择的风格:', styleId);
+      console.log('图片URL:', imageUrl);
+      
+      // 根据不同的风格ID执行相应的处理
+      switch(styleId) {
+        case 'pet-modern':
+          // 处理现代宠物画像风格
+          break;
+        case 'pet-oil':
+          // 处理宠物油画风格
+          break;
+        case 'human-cartoon':
+          // 处理人物卡通风格
+          break;
+        case 'human-newmasus':
+          // 处理人物Newmasus风格
+          break;
+        default:
+          console.warn('未知的风格ID:', styleId);
+      }
+    } catch (error) {
+      console.error('处理风格选择时出错:', error);
+      // 这里可以添加错误处理UI提示
+    }
   };
 
   // 处理图片下载
@@ -249,51 +271,10 @@ export default function Draw() {
     });
   };
 
-  // 新增编辑工具处理函数
-  const handleMatting = () => {
-    if (layers.length > 1 && !selectedLayer) {
-      alert('请先选择要编辑的图层');
-      return;
-    }
-    setEditMode('matting');
-    setIsEditModalOpen(true);
-  };
-
-  const handleEnhance = () => {
-    if (layers.length > 1 && !selectedLayer) {
-      alert('请先选择要编辑的图层');
-      return;
-    }
-    setEditMode('enhance');
-    setIsEditModalOpen(true);
-  };
-
-  const handleErase = () => {
-    if (layers.length > 1 && !selectedLayer) {
-      alert('请先选择要编辑的图层');
-      return;
-    }
-    setEditMode('erase');
-    setIsEditModalOpen(true);
-  };
-
-  const handleZoom = () => {
-    if (layers.length > 1 && !selectedLayer) {
-      alert('请先选择要编辑的图层');
-      return;
-    }
-    setEditMode('zoom');
-    setIsEditModalOpen(true);
-  };
-
-  const handleRotate = () => {
-    if (layers.length > 1 && !selectedLayer) {
-      alert('请先选择要编辑的图层');
-      return;
-    }
-    setEditMode('rotate');
-    setIsEditModalOpen(true);
-  };
+  // 处理存档
+  const handleArchive = useCallback(() => {
+    console.log('存档仓库');
+  }, []);
 
   // 处理图层上传
   const handleLayerUpload = () => {
@@ -398,35 +379,35 @@ export default function Draw() {
       
       // 计算图片在画布中的实际位置和大小
       const imageRatio = img.width / img.height;
-      let targetWidth, targetHeight, imgX, imgY;
+      let targetWidth, targetHeight, x, y;
 
       if (imageRatio === 1) {
         const size = Math.min(canvas.width, canvas.height);
         targetWidth = size / dpr;
         targetHeight = size / dpr;
-        imgX = (canvas.width / dpr - targetWidth) / 2;
-        imgY = (canvas.height / dpr - targetHeight) / 2;
+        x = (canvas.width / dpr - targetWidth) / 2;
+        y = (canvas.height / dpr - targetHeight) / 2;
       } else if (imageRatio > 1) {
         targetWidth = canvas.width / dpr;
         targetHeight = (canvas.width / dpr) / imageRatio;
-        imgX = 0;
-        imgY = (canvas.height / dpr - targetHeight) / 2;
+        x = 0;
+        y = (canvas.height / dpr - targetHeight) / 2;
       } else {
         targetHeight = canvas.height / dpr;
         targetWidth = (canvas.height / dpr) * imageRatio;
-        imgX = (canvas.width / dpr - targetWidth) / 2;
-        imgY = 0;
+        x = (canvas.width / dpr - targetWidth) / 2;
+        y = 0;
       }
 
       // 应用图层位置偏移
       const position = layerPositions[layer.id] || { x: 0, y: 0 };
-      imgX += position.x;
-      imgY += position.y;
+      x += position.x;
+      y += position.y;
 
       // 检查点击位置是否在图片范围内
       if (isPointInImage(x, y, {
-        left: imgX,
-        top: imgY,
+        left: x,
+        top: y,
         width: targetWidth,
         height: targetHeight
       })) {
@@ -511,8 +492,8 @@ export default function Draw() {
     }
   }, [dimensions]);
 
-  // 优化的渲染函数
-  const renderLayers = useCallback(() => {
+  // 在图层状态变化时重新渲染
+  useEffect(() => {
     if (!canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -571,7 +552,7 @@ export default function Draw() {
             ctx.drawImage(img, x, y, targetWidth, targetHeight);
             ctx.restore();
             resolve();
-    } catch (error) {
+          } catch (error) {
             console.error('Error drawing layer:', error);
             reject(error);
           }
@@ -590,7 +571,7 @@ export default function Draw() {
     Promise.all(renderLayerPromises).catch(error => {
       console.error('Error rendering layers:', error);
     });
-  }, [layers, layerPositions, selectedLayer]);
+  }, [layers, canvasRef, layerPositions, selectedLayer]);
 
   // 抽离图层绘制逻辑
   const drawLayer = (ctx, img, layer) => {
@@ -655,7 +636,7 @@ export default function Draw() {
     return () => cancelAnimationFrame(moveFrame);
   }, []);
 
-  // 优化的画布鼠标移动处理
+  // 处理画布鼠标移动
   const handleCanvasMouseMove = useCallback((e) => {
     if (!isDraggingImage || (!selectedLayer && !hasImage)) return;
     
@@ -679,11 +660,6 @@ export default function Draw() {
   const handleCanvasMouseUp = () => {
     setIsDraggingImage(false);
   };
-
-  // 在图层状态变化时重新渲染
-  useEffect(() => {
-    renderLayers();
-  }, [layers, renderLayers]);
 
   // 处理触摸拖动开始
   const handleTouchStart = (e, index) => {
@@ -717,9 +693,9 @@ export default function Draw() {
   };
 
   // 处理画布触摸移动
-  const handleCanvasTouchMove = (e) => {
+  const handleCanvasTouchMove = useCallback((e) => {
     if (!isDraggingImage || (!selectedLayer && !hasImage)) return;
-    e.preventDefault(); // 防止页面滚动
+    e.preventDefault();
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -736,12 +712,22 @@ export default function Draw() {
     }
     
     setDragStart({ x, y });
-  };
+  }, [isDraggingImage, selectedLayer, hasImage, layers, dragStart, moveLayer]);
 
   // 处理画布触摸结束
   const handleCanvasTouchEnd = () => {
     setIsDraggingImage(false);
   };
+
+  // 处理画布鼠标离开
+  const handleCanvasMouseLeave = useCallback(() => {
+    setIsDraggingImage(false);
+  }, []);
+
+  // 处理画布鼠标进入
+  const handleCanvasMouseEnter = useCallback(() => {
+    // 如果需要在鼠标进入时执行任何操作，可以在这里添加
+  }, []);
 
   // 创建图层预览图
   const createLayerThumbnail = useCallback((layer) => {
@@ -889,17 +875,168 @@ export default function Draw() {
     });
   };
 
+  // 处理点击和触摸事件以打开AI肖像模态框
+  const handleAIPortraitClick = () => {
+    setShowAIPortraitModal(true);
+  };
+
+  // 处理移动端触摸事件
+  const handleAIPortraitTouch = (e) => {
+    e.preventDefault();
+    handleAIPortraitClick();
+  };
+
+  // 获取画布图片数据
+  const getCanvasImage = () => {
+    return new Promise((resolve, reject) => {
+      try {
+        console.log('开始获取画布数据...');
+        const canvas = canvasRef.current;
+        canvas.toBlob((blob) => {
+          if (blob) {
+            console.log('成功获取画布数据，大小：', blob.size);
+            resolve(blob);
+          } else {
+            reject(new Error('无法获取画布图片数据'));
+          }
+        }, 'image/png');
+      } catch (error) {
+        console.error('获取画布数据失败:', error);
+        reject(error);
+      }
+    });
+  };
+
+  // 上传图片到服务端 API
+  const uploadToCOS = async (imageBlob, styleId) => {
+    try {
+      console.log('开始上传图片到服务器...');
+      
+      // 获取当前日期和时间
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds() + 2).padStart(2, '0');
+      
+      // 构建日期目录和文件名
+      const dateDir = `${year}${month}${day}`;
+      const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`;
+      
+      // 创建 FormData
+      const formData = new FormData();
+      formData.append('file', imageBlob, 'image.png');
+      formData.append('dateDir', dateDir);
+      formData.append('timestamp', timestamp);
+      formData.append('styleId', styleId);
+
+      // 发送到服务端 API
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('服务器返回错误:', errorData);
+        throw new Error(errorData.details || '上传失败');
+      }
+
+      const data = await response.json();
+      console.log('上传成功，文件URL:', data.url);
+      return data.url;
+    } catch (error) {
+      console.error('上传过程出错:', error);
+      throw error;
+    }
+  };
+
+  // 新增功能按钮处理函数
+  const handleAIPortrait = () => {
+    setShowAIPortraitModal(true);
+  };
+
+  const handleStyleOverlay = () => {
+    console.log('风格叠加');
+  };
+
+  const handleProductSelect = () => {
+    console.log('商品选择');
+  };
+
+  const handleOrder = () => {
+    console.log('订单发货');
+  };
+
+  // 新增编辑工具处理函数
+  const handleMatting = () => {
+    if (layers.length > 1 && !selectedLayer) {
+      alert('请先选择要编辑的图层');
+      return;
+    }
+    setEditMode('matting');
+    setIsEditModalOpen(true);
+  };
+
+  const handleEnhance = () => {
+    if (layers.length > 1 && !selectedLayer) {
+      alert('请先选择要编辑的图层');
+      return;
+    }
+    setEditMode('enhance');
+    setIsEditModalOpen(true);
+  };
+
+  const handleZoom = () => {
+    if (layers.length > 1 && !selectedLayer) {
+      alert('请先选择要编辑的图层');
+      return;
+    }
+    setEditMode('zoom');
+    setIsEditModalOpen(true);
+  };
+
+  const handleRotate = () => {
+    if (layers.length > 1 && !selectedLayer) {
+      alert('请先选择要编辑的图层');
+      return;
+    }
+    setEditMode('rotate');
+    setIsEditModalOpen(true);
+  };
+
   return (
     <Layout>
-      <div className="draw-container">
-        <motion.div 
-          className={`canvas-wrapper ${isDragging ? 'dragging' : ''}`}
+      <div 
+        className="canvas-container"
+        style={{
+          width: '100%',
+          height: `calc(100vh - 160px)`, /* 减去两个工具栏的高度：80px + 80px */
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+          overflow: 'hidden'
+        }}
+      >
+        <motion.div
+          className={`canvas-wrapper ${isDragging ? 'dragging' : ''} ${hasImage ? 'has-image' : ''}`}
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.3 }}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative'
+          }}
         >
           <canvas
             ref={canvasRef}
@@ -909,7 +1046,8 @@ export default function Draw() {
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
-            onMouseLeave={handleCanvasMouseUp}
+            onMouseLeave={handleCanvasMouseLeave}
+            onMouseEnter={handleCanvasMouseEnter}
             onTouchStart={handleCanvasTouchStart}
             onTouchMove={handleCanvasTouchMove}
             onTouchEnd={handleCanvasTouchEnd}
@@ -1049,7 +1187,7 @@ export default function Draw() {
                           title="上移图层"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M12 19V5M5 12l7-7 7 7"/>
+                            <path d="M12 19V5M12 19H5M22 19h-2M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41M19.07 19.07l-1.41-1.41M6.34 6.34L4.93 4.93" />
                           </svg>
                         </button>
                         <button
@@ -1062,7 +1200,8 @@ export default function Draw() {
                           title="下移图层"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M12 5v14M5 12l7 7 7-7"/>
+                            <path d="M7 7h10v10H7z"/>
+                            <path d="M19 7v10H5V7"/>
                           </svg>
                         </button>
                         <button
@@ -1115,6 +1254,22 @@ export default function Draw() {
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </motion.button>
+          )}
+          {hasImage && (
+            <motion.button
+              className="canvas-archive"
+              onClick={handleArchive}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              title="存档"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 8v13H3L3 8" />
+                <path d="M1 3h22v5H1z" />
+                <path d="M10 12h4" />
               </svg>
             </motion.button>
           )}
@@ -1174,7 +1329,6 @@ export default function Draw() {
 
                   <motion.button
                     className="tool-button erase"
-                    onClick={handleErase}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
@@ -1263,7 +1417,7 @@ export default function Draw() {
                 whileTap={{ scale: 0.95 }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 8v13H3V8" />
+                  <path d="M21 8v13H3L3 8" />
                   <path d="M1 3h22v5H1z" />
                   <path d="M10 12h4" />
                 </svg>
@@ -1274,13 +1428,15 @@ export default function Draw() {
             <div className="function-buttons">
               <motion.button
                 className="canvas-button smart-portrait"
-                onClick={handleAIPortrait}
+                onClick={handleAIPortraitClick}
+                onTouchStart={handleAIPortraitTouch}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
-                  <path d="M12 6a4 4 0 1 0 4 4 4 4 0 0 0-4-4z"/>
+                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                  <path d="M12 6v12"/>
+                  <path d="M6 12h12"/>
                 </svg>
                 智能画像
               </motion.button>
@@ -1291,7 +1447,7 @@ export default function Draw() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                   <path d="M2 2h20v20H2z"/>
                   <path d="M7 7h10v10H7z"/>
                 </svg>
@@ -1304,10 +1460,10 @@ export default function Draw() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                   <path d="M21 8l-3-6H6L3 8v12h18V8z"/>
                   <path d="M3 8h18"/>
-                  <path d="M15 8a3 3 0 0 1-6 0"/>
+                  <path d="M15 8a3 3 0 0 0-6 0"/>
                 </svg>
                 商品选择
               </motion.button>
@@ -1318,7 +1474,7 @@ export default function Draw() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
                   <path d="M5 12h14"/>
                   <path d="M12 5l7 7-7 7"/>
                 </svg>
@@ -1416,6 +1572,13 @@ export default function Draw() {
           </motion.button>
         )}
       </EditModal>
+
+      {/* AI画像弹窗 */}
+      <AIPortraitModal
+        isOpen={showAIPortraitModal}
+        onClose={() => setShowAIPortraitModal(false)}
+        onSelect={handlePortraitStyleSelect}
+      />
     </Layout>
   );
 }

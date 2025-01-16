@@ -173,10 +173,7 @@ const EditModal = ({
     
     const img = new Image();
     img.onload = () => {
-      console.log('状态图片加载成功:', {
-        width: img.width,
-        height: img.height
-      });
+      console.log('状态图片加载成功，尺寸:', img.width, 'x', img.height);
       
       // 清空画布
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -463,154 +460,245 @@ const EditModal = ({
   };
 
   // 处理擦除
-  const handleErase = (x, y, lastX, lastY) => {
-    if (!modalCanvasRef.current || isEditing) return;
+  const handleErase = (point, lastPoint = null) => {
+    if (!modalCanvasRef.current || !point) return;
+
+    try {
+      const canvas = modalCanvasRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      // 计算实际的擦除半径（考虑缩放）
+      const rect = canvas.getBoundingClientRect();
+      const displayToCanvasRatio = canvas.width / rect.width;
+      const scaledRadius = eraseRadius * displayToCanvasRatio;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+
+      if (lastPoint && point.canvasX !== lastPoint.canvasX && point.canvasY !== lastPoint.canvasY) {
+        // 计算两点之间的距离
+        const dx = point.canvasX - lastPoint.canvasX;
+        const dy = point.canvasY - lastPoint.canvasY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // 根据距离和半径计算插值步数
+        const steps = Math.max(Math.ceil(distance / (scaledRadius * 0.5)), 1);
+        const stepX = dx / steps;
+        const stepY = dy / steps;
+
+        // 使用缓存的路径优化性能
+        ctx.beginPath();
+        for (let i = 0; i <= steps; i++) {
+          const x = lastPoint.canvasX + stepX * i;
+          const y = lastPoint.canvasY + stepY * i;
+          
+          if (i === 0) {
+            ctx.moveTo(x + scaledRadius, y);
+          }
+          ctx.arc(x, y, scaledRadius, 0, Math.PI * 2);
+        }
+        ctx.fill();
+      } else {
+        // 单点擦除
+        ctx.beginPath();
+        ctx.arc(point.canvasX, point.canvasY, scaledRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    } catch (error) {
+      console.error('擦除时出错:', error);
+    }
+  };
+
+  // 渲染擦除圆圈
+  const renderEraseCircle = () => {
+    if (editMode !== 'erase') return null;
+
+    const canvas = modalCanvasRef.current;
+    if (!canvas) return null;
+
+    const rect = canvas.getBoundingClientRect();
+    const circleSize = eraseRadius * 2;
+
+    return (
+      <div
+        className="erase-circle"
+        style={{
+          position: 'fixed',
+          left: `${eraserPosition.x}px`,
+          top: `${eraserPosition.y}px`,
+          width: `${circleSize}px`,
+          height: `${circleSize}px`,
+          border: '2px solid rgba(255, 255, 255, 0.9)',
+          borderRadius: '50%',
+          transform: 'translate(-50%, -50%)',
+          pointerEvents: 'none',
+          zIndex: 1000,
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
+          opacity: isErasing ? 0.9 : 0.7,
+          cursor: 'none'
+        }}
+      />
+    );
+  };
+
+  // 获取画布上的点坐标
+  const getCanvasPoint = (event) => {
+    if (!modalCanvasRef.current) return null;
     
+    const canvas = modalCanvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    
+    try {
+      let clientX, clientY;
+      if (event.touches && event.touches.length > 0) {
+        const touch = event.touches[0];
+        clientX = touch.clientX;
+        clientY = touch.clientY;
+      } else if (event.changedTouches && event.changedTouches.length > 0) {
+        const touch = event.changedTouches[0];
+        clientX = touch.clientX;
+        clientY = touch.clientY;
+      } else {
+        clientX = event.clientX;
+        clientY = event.clientY;
+      }
+
+      if (typeof clientX !== 'number' || typeof clientY !== 'number') {
+        return null;
+      }
+
+      // 计算画布上的实际坐标
+      const canvasX = (clientX - rect.left) * (canvas.width / rect.width);
+      const canvasY = (clientY - rect.top) * (canvas.height / rect.height);
+
+      return {
+        canvasX,
+        canvasY,
+        clientX,
+        clientY
+      };
+    } catch (error) {
+      console.error('获取坐标时出错:', error);
+      return null;
+    }
+  };
+
+  // 处理触摸开始
+  const handleTouchStart = (e) => {
+    if (editMode !== 'erase') return;
+    try {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const point = getCanvasPoint(e);
+      if (!point) return;
+
+      setIsErasing(true);
+      setLastPoint(point);
+      updateEraserPosition(point);
+      handleErase(point);
+    } catch (error) {
+      console.error('触摸开始时出错:', error);
+    }
+  };
+
+  // 处理触摸移动
+  const handleTouchMove = (e) => {
+    if (editMode !== 'erase') return;
+    try {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const point = getCanvasPoint(e);
+      if (!point) return;
+
+      updateEraserPosition(point);
+
+      if (isErasing && lastPoint) {
+        handleErase(point, lastPoint);
+        setLastPoint(point);
+      }
+    } catch (error) {
+      console.error('触摸移动时出错:', error);
+    }
+  };
+
+  // 处理触摸结束
+  const handleTouchEnd = (e) => {
+    if (editMode !== 'erase') return;
+    try {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      setIsErasing(false);
+      setLastPoint(null);
+      saveEditState();
+    } catch (error) {
+      console.error('触摸结束时出错:', error);
+    }
+  };
+
+  // 处理变换
+  const handleTransform = (scale, rotate) => {
+    if (!modalCanvasRef.current || !initialCanvas) return;
+
     const canvas = modalCanvasRef.current;
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
+
+    // 清空画布
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 保存当前状态
+    ctx.save();
+
+    // 设置变换中心点为画布中心
+    ctx.translate(canvas.width / (2 * dpr), canvas.height / (2 * dpr));
     
-    ctx.globalCompositeOperation = 'destination-out';
-    
-    if (lastX !== undefined && lastY !== undefined) {
-      // 使用二次贝塞尔曲线实现平滑擦除
-      const controlX = (lastX + x) / 2;
-      const controlY = (lastY + y) / 2;
-      
-      ctx.beginPath();
-      ctx.moveTo(lastX, lastY);
-      ctx.quadraticCurveTo(
-        controlX, 
-        controlY,
-        x, 
-        y
-      );
-      ctx.lineWidth = eraseRadius * 2;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.stroke();
-    } else {
-      // 单点擦除
-      ctx.beginPath();
-      ctx.arc(x, y, eraseRadius, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    
-    ctx.globalCompositeOperation = 'source-over';
-  };
+    // 应用旋转和缩放
+    ctx.rotate((rotate * Math.PI) / 180);
+    ctx.scale(scale / 100, scale / 100);
 
-  // 更新事件监听器
-  useEffect(() => {
-    const canvas = modalCanvasRef.current;
-    if (!canvas) return;
+    // 绘制图像，需要将原点移回去
+    ctx.drawImage(
+      initialCanvas,
+      -canvas.width / (2 * dpr),
+      -canvas.height / (2 * dpr),
+      canvas.width / dpr,
+      canvas.height / dpr
+    );
 
-    const getCanvasPoint = (touch) => {
-      if (!canvasRect.current) {
-        canvasRect.current = canvas.getBoundingClientRect();
-      }
-      
-      // 计算相对于画布的坐标
-      const x = touch.clientX - canvasRect.current.left;
-      const y = touch.clientY - canvasRect.current.top;
-      
-      return { x, y };
-    };
+    // 恢复状态
+    ctx.restore();
 
-    const handleTouchStart = (e) => {
-      if (editMode !== 'erase') return;
-      
-      e.preventDefault();
-      const touch = e.touches[0];
-      const point = getCanvasPoint(touch);
-      
-      setIsDrawing(true);
-      setLastPoint(point);
-      setEraserPosition(point);
-      handleErase(point.x, point.y);
-    };
-
-    const handleTouchMove = (e) => {
-      if (editMode !== 'erase') return;
-      
-      e.preventDefault();
-      const touch = e.touches[0];
-      const point = getCanvasPoint(touch);
-      
-      setEraserPosition(point);
-      
-      if (isDrawing && lastPoint) {
-        handleErase(point.x, point.y, lastPoint.x, lastPoint.y);
-        setLastPoint(point);
-      }
-    };
-
-    const handleTouchEnd = (e) => {
-      if (editMode !== 'erase') return;
-      
-      e.preventDefault();
-      setIsDrawing(false);
-      setLastPoint(null);
-      canvasRect.current = null;
+    // 保存编辑状态
+    requestAnimationFrame(() => {
       saveEditState();
-    };
-
-    if (editMode === 'erase') {
-      canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-      canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-      canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-      canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
-    }
-
-    return () => {
-      canvas.removeEventListener('touchstart', handleTouchStart);
-      canvas.removeEventListener('touchmove', handleTouchMove);
-      canvas.removeEventListener('touchend', handleTouchEnd);
-      canvas.removeEventListener('touchcancel', handleTouchEnd);
-    };
-  }, [editMode, isDrawing]);
-
-  // 处理鼠标事件
-  const handleMouseDown = (e) => {
-    if (editMode !== 'erase') return;
-    
-    if (!canvasRect.current) {
-      canvasRect.current = modalCanvasRef.current.getBoundingClientRect();
-    }
-    
-    const x = e.clientX - canvasRect.current.left;
-    const y = e.clientY - canvasRect.current.top;
-    
-    setIsDrawing(true);
-    setLastPoint({ x, y });
-    setEraserPosition({ x, y });
-    handleErase(x, y);
+    });
   };
 
-  const handleMouseMove = (e) => {
-    if (editMode !== 'erase') return;
+  // 处理滑块变化
+  const handleSliderChange = (e) => {
+    const value = parseInt(e.target.value);
     
-    if (!canvasRect.current) {
-      canvasRect.current = modalCanvasRef.current.getBoundingClientRect();
+    switch (editMode) {
+      case 'rotate':
+        setRotateValue(value);
+        handleRotate(value);
+        break;
+      case 'zoom':
+        setScaleValue(value);
+        handleTransform(value, rotateValue);
+        break;
+      case 'erase':
+        setEraseRadius(value);
+        break;
+      default:
+        break;
     }
-    
-    const x = e.clientX - canvasRect.current.left;
-    const y = e.clientY - canvasRect.current.top;
-    
-    setEraserPosition({ x, y });
-    
-    if (isDrawing && lastPoint) {
-      handleErase(x, y, lastPoint.x, lastPoint.y);
-      setLastPoint({ x, y });
-    }
-  };
-
-  const handleMouseUp = () => {
-    if (editMode !== 'erase') return;
-    
-    setIsDrawing(false);
-    setLastPoint(null);
-    canvasRect.current = null;
-    saveEditState();
   };
 
   // 处理旋转
@@ -658,26 +746,6 @@ const EditModal = ({
 
     setIsEditing(false);
     saveEditState();
-  };
-
-  // 处理滑块变化
-  const handleSliderChange = (e) => {
-    const value = parseInt(e.target.value);
-    
-    switch (editMode) {
-      case 'rotate':
-        setRotateValue(value);
-        handleRotate(value);
-        break;
-      case 'zoom':
-        const scale = value / 100;
-        setScaleValue(value);
-        handleZoom(scale);
-        break;
-      case 'erase':
-        setEraseRadius(value);
-        break;
-    }
   };
 
   // 处理编辑操作
@@ -744,7 +812,7 @@ const EditModal = ({
       // 移除base64前缀
       const base64Data = imageData.split(',')[1];
       
-      console.log('Sending matting request...');
+      console.log('发送抠图请求...');
       
       // 调用抠图API
       const response = await fetch('/api/image/matting', {
@@ -757,7 +825,7 @@ const EditModal = ({
         }),
       });
 
-      console.log('Received response:', response.status);
+      console.log('收到响应:', response.status);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -765,7 +833,7 @@ const EditModal = ({
       }
 
       const data = await response.json();
-      console.log('Response data:', data);
+      console.log('响应数据:', data);
       
       if (!data.success) {
         throw new Error(data.message || '抠图处理失败');
@@ -877,282 +945,386 @@ const EditModal = ({
     }
   };
 
-  // 修改鼠标/触摸事件处理函数
+  // 处理鼠标事件
   const handlePointerDown = (e) => {
     if (editMode !== 'erase') return;
+    e.preventDefault();
     
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX || e.touches[0].clientX) - rect.left;
-    const y = (e.clientY || e.touches[0].clientY) - rect.top;
-    
+    const point = getCanvasPoint(e);
+    if (!point) return;
+
     setIsErasing(true);
-    setEraserPosition({ x, y });
-    handleErase(x, y);
+    setLastPoint(point);
+    updateEraserPosition(point);
+    handleErase(point);
   };
 
   const handlePointerMove = (e) => {
     if (editMode !== 'erase') return;
+    e.preventDefault();
     
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX || (e.touches?.[0]?.clientX)) - rect.left;
-    const y = (e.clientY || (e.touches?.[0]?.clientY)) - rect.top;
-    
-    setEraserPosition({ x, y });
-    
-    if (isErasing) {
-      handleErase(x, y);
+    const point = getCanvasPoint(e);
+    if (!point) return;
+
+    updateEraserPosition(point);
+
+    if (isErasing && lastPoint) {
+      handleErase(point, lastPoint);
+      setLastPoint(point);
     }
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e) => {
+    if (editMode !== 'erase') return;
+    e.preventDefault();
+    
     setIsErasing(false);
+    setLastPoint(null);
+    saveEditState();
   };
 
-  // 修改 useEffect 中的鼠标样式更新
+  // 处理鼠标移动
+  const handleMouseMove = (e) => {
+    if (editMode !== 'erase') return;
+    e.preventDefault();
+    
+    const point = getCanvasPoint(e);
+    if (!point) return;
+
+    updateEraserPosition(point);
+  };
+
+  // 更新擦除器位置
+  const updateEraserPosition = (point) => {
+    if (!point || !modalCanvasRef.current) return;
+    
+    const canvas = modalCanvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+
+    // 使用精确的像素位置
+    setEraserPosition({
+      x: Math.round(point.clientX),
+      y: Math.round(point.clientY)
+    });
+  };
+
+  // 处理鼠标按下
+  const handleMouseDown = (e) => {
+    if (editMode !== 'erase') return;
+    e.preventDefault();
+    
+    const point = getCanvasPoint(e);
+    if (!point) return;
+
+    setIsErasing(true);
+    setLastPoint(point);
+    updateEraserPosition(point);
+    handleErase(point);
+  };
+
+  // 处理鼠标抬起
+  const handleMouseUp = (e) => {
+    if (editMode !== 'erase') return;
+    e.preventDefault();
+
+    setIsErasing(false);
+    setLastPoint(null);
+    saveEditState();
+  };
+
+  // 添加事件监听
   useEffect(() => {
-    setPreviewStyle(prev => ({
-      ...prev,
-      cursor: editMode === 'erase' ? 'none' : 'default'
-    }));
-    setShowEraser(editMode === 'erase');
+    if (!modalCanvasRef.current || editMode !== 'erase') {
+      return;
+    }
+
+    const canvas = modalCanvasRef.current;
+    const options = { passive: false };
+    
+    // 鼠标事件
+    canvas.addEventListener('mousedown', handleMouseDown, options);
+    canvas.addEventListener('mousemove', handleMouseMove, options);
+    canvas.addEventListener('mouseup', handleMouseUp, options);
+    canvas.addEventListener('mouseleave', handleMouseUp, options);
+    
+    // 触摸事件
+    canvas.addEventListener('touchstart', handleTouchStart, options);
+    canvas.addEventListener('touchmove', handleTouchMove, options);
+    canvas.addEventListener('touchend', handleTouchEnd, options);
+    canvas.addEventListener('touchcancel', handleTouchEnd, options);
+
+    // 设置初始位置
+    const rect = canvas.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    setEraserPosition({
+      x: Math.round(centerX),
+      y: Math.round(centerY)
+    });
+
+    return () => {
+      // 移除事件监听
+      canvas.removeEventListener('mousedown', handleMouseDown);
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('mouseup', handleMouseUp);
+      canvas.removeEventListener('mouseleave', handleMouseUp);
+      canvas.removeEventListener('touchstart', handleTouchStart);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+      canvas.removeEventListener('touchend', handleTouchEnd);
+      canvas.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [editMode]);
+
+  // 更新鼠标样式
+  useEffect(() => {
+    if (modalCanvasRef.current) {
+      modalCanvasRef.current.style.cursor = editMode === 'erase' ? 'none' : 'default';
+    }
   }, [editMode]);
 
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div 
-        key="modal-backdrop"
-        className="modal-backdrop"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={handleClose}
-      >
-        <motion.div 
-          key="modal-content"
-          className="modal-content"
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.8, opacity: 0 }}
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="modal-header">
-            <button className="close-button" onClick={handleClose}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <div className="modal-body">
-            <div 
-              className="edit-canvas-container"
-              style={{ 
-                height: '84%', 
-                position: 'relative',
-                background: 'rgba(255, 255, 255, 0.12)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '0.6rem',
-                backdropFilter: 'blur(4px)',                  
-                WebkitBackdropFilter: 'blur(4px)',
-                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.02)'
-              }}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-            >
-              <canvas 
-                ref={modalCanvasRef}
-                className="edit-canvas"
-                style={{
-                  position: 'relative',
-                  width: '100%',
-                  height: '100%',
-                  ...previewStyle
-                }}
-              />
-              {showEraser && (
-                <div
-                  className="eraser-preview"
-                  style={{
-                    position: 'absolute',
-                    left: eraserPosition.x,
-                    top: eraserPosition.y,
-                    width: eraseRadius * 2,
-                    height: eraseRadius * 2,
-                    border: '2px solid rgba(0, 0, 0, 0.5)',
-                    borderRadius: '50%',
-                    pointerEvents: 'none',
-                    transform: 'translate(-50%, -50%)',
-                    transition: 'width 0.2s, height 0.2s',
-                    zIndex: 1000
-                  }}
-                />
-              )}
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            className="modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.8)',
+              zIndex: 10
+            }}
+          />
+          <motion.div
+            className="edit-modal"
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="modal-header">
+              <button className="close-button" onClick={handleClose}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
             </div>
             
-            {(editMode === 'zoom' || editMode === 'rotate' || editMode === 'erase') && (
-              <div className="slider-controls">
-                {editMode === 'rotate' && (
-                  <div className="slider-group">
-                    <input
-                      type="range"
-                      min="-180"
-                      max="180"
-                      value={rotateValue}
-                      onChange={handleSliderChange}
-                      className="edit-slider"
-                    />
-                    <span className="slider-value">{rotateValue}°</span>
-                  </div>
-                )}
-                {editMode === 'zoom' && (
-                  <div className="slider-group">
-                    <input
-                      type="range"
-                      min="50"
-                      max="200"
-                      value={scaleValue}
-                      onChange={handleSliderChange}
-                      className="edit-slider"
-                    />
-                    <span className="slider-value">{scaleValue}%</span>
-                  </div>
-                )}
-                {editMode === 'erase' && (
-                  <div className="slider-group">
-                    <input
-                      type="range"
-                      min="5"
-                      max="50"
-                      value={eraseRadius}
-                      onChange={handleSliderChange}
-                      className="edit-slider"
-                      style={{
-                        width: '200px',
-                        margin: '0 10px'
-                      }}
-                    />
-                    <span className="slider-value">{eraseRadius}px</span>
-                  </div>
-                )}
+            <div className="modal-body">
+              <div 
+                className="edit-canvas-container"
+                style={{ 
+                  height: '84%', 
+                  position: 'relative',
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '0.6rem',
+                  backdropFilter: 'blur(4px)',                  
+                  WebkitBackdropFilter: 'blur(4px)',
+                  boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.02)'
+                }}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+              >
+                <canvas 
+                  ref={modalCanvasRef}
+                  className="edit-canvas"
+                  style={{
+                    position: 'relative',
+                    width: '100%',
+                    height: '100%',
+                    ...previewStyle,
+                    touchAction: editMode === 'erase' ? 'none' : 'auto',  // 防止触摸事件的默认行为
+                    WebkitUserSelect: 'none',
+                    userSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                    boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.02)'
+                  }}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
+                />
+                {renderEraseCircle()}
               </div>
-            )}
+              
+              {(editMode === 'zoom' || editMode === 'rotate' || editMode === 'erase') && (
+                <div className="slider-controls">
+                  {editMode === 'rotate' && (
+                    <div className="slider-group" data-type="rotate">
+                      <input
+                        type="range"
+                        min="-180"
+                        max="180"
+                        value={rotateValue}
+                        onChange={handleSliderChange}
+                        className="edit-slider"
+                      />
+                      <span className="slider-value">{rotateValue}°</span>
+                    </div>
+                  )}
+                  {editMode === 'zoom' && (
+                    <div className="slider-group" data-type="zoom">
+                      <input
+                        type="range"
+                        min="50"
+                        max="200"
+                        value={scaleValue}
+                        onChange={handleSliderChange}
+                        className="edit-slider"
+                      />
+                      <span className="slider-value">{scaleValue}%</span>
+                    </div>
+                  )}
+                  {editMode === 'erase' && (
+                    <div className="slider-group" data-type="erase">
+                      <input
+                        type="range"
+                        min="5"
+                        max="50"
+                        value={eraseRadius}
+                        onChange={handleSliderChange}
+                        className="edit-slider"
+                        style={{
+                          width: '200px',
+                          margin: '0 10px'
+                        }}
+                      />
+                      <span className="slider-value">{eraseRadius}px</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
-            <div className="edit-tools">
-              <div className="tool-icons">
-                {children && React.Children.map(children, (child, index) => {
-                  if (!child) return null;
-                  // 获取按钮的图标和文字
-                  const iconChild = React.Children.toArray(child.props.children)
-                    .find(c => c.type === 'svg' || (c.props && c.props.className === 'button-icon'));
-                  const textChild = React.Children.toArray(child.props.children)
-                    .find(c => c.type === 'span' && c.props.className === 'button-text');
-                  
-                  return (
-                    <motion.button 
-                      onClick={() => handleEdit(editMode)}
-                      disabled={isEditing}
-                      className="tool-button"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.9)',
-                        border: '1px solid rgba(0, 0, 0, 0.08)',
-                        padding: '0.5rem 0.9rem',
-                        borderRadius: '0.6rem',
-                        color: 'rgba(0, 0, 0, 0.8)',
-                        fontSize: '0.9rem',
-                        fontWeight: '500',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      {iconChild}
-                      {textChild}
-                    </motion.button>
-                  );
-                })}
-              </div>
-              <div className="action-buttons">
-                <motion.button 
-                  className="tool-button" 
-                  onClick={applyChanges}
-                  disabled={isEditing || editHistory.length <= 1}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  style={{
-                    background: 'rgba(59, 130, 246, 0.1)',
-                    border: '1px solid rgba(59, 130, 246, 0.2)',
-                    padding: '0.5rem',
-                    borderRadius: '0.6rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M20 6L9 17l-5-5" />
-                  </svg>
-                </motion.button>
-                <motion.button 
-                  className="tool-button" 
-                  onClick={undo}
-                  disabled={isEditing || currentStep <= 0}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.9)',
-                    border: '1px solid rgba(0, 0, 0, 0.08)',
-                    padding: '0.5rem',
-                    borderRadius: '0.6rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M9 14L4 9l5-5" />
-                    <path d="M4 9h11a4 4 0 0 1 0 8h-1" />
-                  </svg>
-                </motion.button>
-                <motion.button 
-                  className="tool-button" 
-                  onClick={redo}
-                  disabled={isEditing || currentStep >= editHistory.length - 1}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.9)',
-                    border: '1px solid rgba(0, 0, 0, 0.08)',
-                    padding: '0.5rem',
-                    borderRadius: '0.6rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M15 14l5-5-5-5" />
-                    <path d="M20 9H9a4 4 0 0 0 0 8h1" />
-                  </svg>
-                </motion.button>
+              <div className="edit-tools">
+                <div className="tool-icons">
+                  {children && React.Children.map(children, (child, index) => {
+                    if (!child) return null;
+                    // 获取按钮的图标和文字
+                    const iconChild = React.Children.toArray(child.props.children)
+                      .find(c => c.type === 'svg' || (c.props && c.props.className === 'button-icon'));
+                    const textChild = React.Children.toArray(child.props.children)
+                      .find(c => c.type === 'span' && c.props.className === 'button-text');
+                    
+                    return (
+                      <motion.button 
+                        onClick={() => handleEdit(editMode)}
+                        disabled={isEditing}
+                        className="tool-button"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.9)',
+                          border: '1px solid rgba(0, 0, 0, 0.08)',
+                          padding: '0.5rem 0.9rem',
+                          borderRadius: '0.6rem',
+                          color: 'rgba(0, 0, 0, 0.8)',
+                          fontSize: '0.9rem',
+                          fontWeight: '500',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        {iconChild}
+                        {textChild}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+                <div className="action-buttons">
+                  <motion.button 
+                    className="tool-button" 
+                    onClick={applyChanges}
+                    disabled={isEditing || editHistory.length <= 1}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    style={{
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      border: '1px solid rgba(59, 130, 246, 0.2)',
+                      padding: '0.5rem',
+                      borderRadius: '0.6rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                  </motion.button>
+                  <motion.button 
+                    className="tool-button" 
+                    onClick={undo}
+                    disabled={isEditing || currentStep <= 0}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.9)',
+                      border: '1px solid rgba(0, 0, 0, 0.08)',
+                      padding: '0.5rem',
+                      borderRadius: '0.6rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M9 14L4 9l5-5" />
+                      <path d="M4 9h11a4 4 0 0 1 0 8h-1" />
+                    </svg>
+                  </motion.button>
+                  <motion.button 
+                    className="tool-button" 
+                    onClick={redo}
+                    disabled={isEditing || currentStep >= editHistory.length - 1}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.9)',
+                      border: '1px solid rgba(0, 0, 0, 0.08)',
+                      padding: '0.5rem',
+                      borderRadius: '0.6rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M15 14l5-5-5-5" />
+                      <path d="M20 9H9a4 4 0 0 0 0 8h1" />
+                    </svg>
+                  </motion.button>
+                </div>
               </div>
             </div>
-          </div>
-        </motion.div>
-      </motion.div>
+          </motion.div>
+        </>
+      )}
     </AnimatePresence>
   );
 };

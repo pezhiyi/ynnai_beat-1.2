@@ -13,6 +13,7 @@
 @import './modules/canvas/base.css';
 @import './modules/canvas/tools.css';
 @import './modules/canvas/hints.css';
+@import './modules/canvas/position.css';
 
 /* 图层相关模块 */
 @import './modules/layers/panel.css';
@@ -64,6 +65,9 @@
   --spacing-sm: 0.5rem;
   --spacing-md: 0.8rem;
   --spacing-lg: 1rem;
+  
+  /* 导航栏高度 */
+  --navbar-height: 60px;
 }
 
 /* 全局重置 */
