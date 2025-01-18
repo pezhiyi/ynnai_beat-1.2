@@ -1,0 +1,280 @@
+.editor {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.98);
+  padding: 16px;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 90vh;
+  transform: translateY(0);
+  transition: transform 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.imageWrapper {
+  position: relative;
+  width: 100%;
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.imageContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imageTarget {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: center;
+}
+
+.imageTarget img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.controls {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.controlGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.controlGroup label {
+  min-width: 40px;
+  font-size: 14px;
+  color: #666;
+}
+
+.controlGroup span {
+  min-width: 50px;
+  font-size: 14px;
+  color: #666;
+  text-align: right;
+}
+
+.slider {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  background: #e0e0e0;
+  border-radius: 2px;
+  outline: none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #3b82f6;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.slider::-webkit-slider-thumb:hover {
+  background: #2563eb;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #666;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.resetButton {
+  width: 100%;
+  background: #f3f4f6;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.resetButton:hover {
+  background: #e5e7eb;
+}
+
+.buttons {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  margin-top: auto;
+  border-top: 1px solid #eee;
+}
+
+.buttons button {
+  flex: 1;
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirm {
+  background: #3b82f6;
+  color: white;
+}
+
+.confirm:hover {
+  background: #2563eb;
+}
+
+.cancel {
+  background: #f3f4f6;
+  color: #666;
+}
+
+.cancel:hover {
+  background: #e5e7eb;
+}
+
+.transformInfo {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: #666;
+  background: #f5f5f5;
+  padding: 8px 16px;
+  border-radius: 20px;
+}
+
+.quickControls {
+  display: flex;
+  gap: 20px;
+  margin-top: 8px;
+}
+
+.quickControls .controlGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.quickControls button {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: #f3f4f6;
+  color: #666;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.quickControls button:hover {
+  background: #e5e7eb;
+  color: #3b82f6;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .editor {
+    padding: 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .imageContainer {
+    max-width: calc(100vh * 3/4 * 0.8);
+  }
+
+  .controls {
+    padding: 12px;
+  }
+
+  .controlGroup label {
+    min-width: 36px;
+    font-size: 13px;
+  }
+
+  .controlGroup span {
+    min-width: 45px;
+    font-size: 13px;
+  }
+
+  .buttons {
+    padding: 12px;
+  }
+
+  .buttons button {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+}
+
+/* 横屏模式适配 */
+@media (orientation: landscape) and (max-width: 896px) {
+  .editor {
+    max-height: 80vh;
+    right: 20px;
+    left: auto;
+    width: 320px;
+    border-radius: 16px;
+    bottom: 20px;
+  }
+
+  .imageContainer {
+    max-width: calc(80vh * 3/4);
+  }
+}

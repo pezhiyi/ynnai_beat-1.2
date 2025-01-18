@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Layout from '@/components/Layout/Layout';
-import EditModal from '../components/edit/EditModal';
 import AIPortraitModal from '../components/AIPortraitModal';
+import ArchiveModal from '../components/ArchiveModal';
+import ImageEditor from '../components/ImageEditor';
+import SlotSelector from '../services/slotService/SlotSelector'; // 修正导入路径
 
 export default function Draw() {
   const canvasRef = useRef(null);
@@ -19,10 +21,14 @@ export default function Draw() {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [imageCache, setImageCache] = useState({});
   const offscreenCanvasRef = useRef(null);
-  const [editMode, setEditMode] = useState(null);
-  const [currentAngle, setCurrentAngle] = useState(0);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showAIPortraitModal, setShowAIPortraitModal] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showButtons, setShowButtons] = useState(false);
+
+  // 新增编辑模式相关状态
+  const [editMode, setEditMode] = useState(false);
+  const [editingLayer, setEditingLayer] = useState(null);
+  const [layerTransforms, setLayerTransforms] = useState({});
 
   // 计算画布尺寸
   const calculateDimensions = () => {
@@ -53,9 +59,17 @@ export default function Draw() {
 
   // 初始化和监听窗口大小变化
   useEffect(() => {
+    // 计算画布尺寸
     calculateDimensions();
     window.addEventListener('resize', calculateDimensions);
-    return () => window.removeEventListener('resize', calculateDimensions);
+
+    // 初始化槽位选择器
+    console.log('初始化槽位选择器');
+    window.slotSelector = SlotSelector.getInstance();
+    
+    return () => {
+      window.removeEventListener('resize', calculateDimensions);
+    };
   }, []);
 
   // 初始化画布
@@ -217,35 +231,75 @@ export default function Draw() {
     try {
       console.log('开始处理风格选择:', styleId);
       
+      // 确保 slotSelector 已初始化
+      if (!window.slotSelector) {
+        console.log('重新初始化槽位选择器');
+        window.slotSelector = SlotSelector.getInstance();
+      }
+      
       // 获取画布图片数据
+      console.log('获取画布图片数据...');
       const imageBlob = await getCanvasImage();
+      console.log('画布图片数据大小:', imageBlob.size);
+      
+      // 生成时间戳和日期目录
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      
+      // 构建日期目录和时间戳
+      const dateDir = `${year}${month}${day}`;
+      const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`;
+      console.log('生成的日期目录:', dateDir);
+      console.log('生成的时间戳:', timestamp);
       
       // 上传图片到服务端 API
-      const imageUrl = await uploadToCOS(imageBlob, styleId);
+      console.log('准备上传图片...');
+      const formData = new FormData();
+      formData.append('file', imageBlob, 'image.png');
+      formData.append('dateDir', dateDir);
+      formData.append('timestamp', timestamp);
+      formData.append('styleId', styleId);
+
+      // 发送到服务端 API
+      console.log('发送上传请求...');
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const { url } = await response.json();
+      console.log('上传成功，返回URL:', url);
       
       // 关闭模态框
       setShowAIPortraitModal(false);
+
+      // 构造文件名
+      const fileName = `YnnAI-${timestamp}_${styleId}.png`;
+      console.log('生成的文件名:', fileName);
       
-      // 这里可以添加处理不同风格的逻辑
-      console.log('选择的风格:', styleId);
-      console.log('图片URL:', imageUrl);
-      
-      // 根据不同的风格ID执行相应的处理
-      switch(styleId) {
-        case 'pet-modern':
-          // 处理现代宠物画像风格
-          break;
-        case 'pet-oil':
-          // 处理宠物油画风格
-          break;
-        case 'human-cartoon':
-          // 处理人物卡通风格
-          break;
-        case 'human-newmasus':
-          // 处理人物Newmasus风格
-          break;
-        default:
-          console.warn('未知的风格ID:', styleId);
+      // 将文件名传给图槽选择器并激活图槽
+      if (window.slotSelector) {
+        console.log('开始设置槽位...');
+        console.log('传入的文件名:', fileName);
+        const { slotId, slotData } = await window.slotSelector.setSlotNameAndActivate(fileName);
+        console.log('槽位设置成功:');
+        console.log('- 槽位ID:', slotId);
+        console.log('- 槽位数据:', slotData);
+        
+        // 打开存档仓库显示进度
+        console.log('打开存档仓库显示进度');
+        setShowArchiveModal(true);
+      } else {
+        console.warn('未找到 slotSelector 实例');
       }
     } catch (error) {
       console.error('处理风格选择时出错:', error);
@@ -273,7 +327,7 @@ export default function Draw() {
 
   // 处理存档
   const handleArchive = useCallback(() => {
-    console.log('存档仓库');
+    setShowArchiveModal(true);
   }, []);
 
   // 处理图层上传
@@ -353,10 +407,413 @@ export default function Draw() {
 
   // 处理图层选择
   const handleLayerSelect = (layerId, e) => {
-    // 阻止事件冒泡
     e?.stopPropagation();
+    if (editMode) return; // 编辑模式下不允许切换选中层
     setSelectedLayer(layerId === selectedLayer ? null : layerId);
   };
+
+  // 进入编辑模式
+  const handleEditLayer = (layerId) => {
+    if (editMode) return;
+    setEditMode(true);
+    setEditingLayer(layerId);
+    // 初始化或获取现有的变换值
+    const currentTransform = layerTransforms[layerId] || { rotation: 0, scale: 1 };
+    setLayerTransforms(prev => ({
+      ...prev,
+      [layerId]: currentTransform
+    }));
+  };
+
+  // 处理旋转变化
+  const handleRotationChange = (rotation) => {
+    if (!editingLayer) return;
+    setLayerTransforms(prev => ({
+      ...prev,
+      [editingLayer]: {
+        ...prev[editingLayer],
+        rotation
+      }
+    }));
+  };
+
+  // 处理缩放变化
+  const handleScaleChange = (scale) => {
+    if (!editingLayer) return;
+    setLayerTransforms(prev => ({
+      ...prev,
+      [editingLayer]: {
+        ...prev[editingLayer],
+        scale
+      }
+    }));
+  };
+
+  // 处理变换更新
+  const handleTransformChange = (transform) => {
+    if (!editingLayer) return;
+    
+    switch (transform.type) {
+      case 'rotate':
+        setLayerTransforms(prev => ({
+          ...prev,
+          [editingLayer]: {
+            ...prev[editingLayer],
+            rotation: transform.value
+          }
+        }));
+        break;
+      
+      case 'scale':
+        setLayerTransforms(prev => ({
+          ...prev,
+          [editingLayer]: {
+            ...prev[editingLayer],
+            scale: transform.value
+          }
+        }));
+        break;
+      
+      case 'translate':
+        setLayerPositions(prev => ({
+          ...prev,
+          [editingLayer]: {
+            x: transform.value.x,
+            y: transform.value.y
+          }
+        }));
+        break;
+      
+      case 'reset':
+        setLayerTransforms(prev => ({
+          ...prev,
+          [editingLayer]: {
+            rotation: 0,
+            scale: 1
+          }
+        }));
+        setLayerPositions(prev => ({
+          ...prev,
+          [editingLayer]: {
+            x: 0,
+            y: 0
+          }
+        }));
+        break;
+    }
+  };
+
+  // 确认编辑
+  const handleConfirmEdit = (transform) => {
+    if (!editingLayer) return;
+
+    // 更新变换
+    setLayerTransforms(prev => ({
+      ...prev,
+      [editingLayer]: {
+        rotation: transform.rotate,
+        scale: transform.scale
+      }
+    }));
+
+    // 更新位置
+    setLayerPositions(prev => ({
+      ...prev,
+      [editingLayer]: {
+        x: transform.translateX,
+        y: transform.translateY
+      }
+    }));
+
+    // 退出编辑模式
+    setEditMode(false);
+    setEditingLayer(null);
+    setSelectedLayer(null); // 清除选中状态
+
+    // 重新渲染画布
+    requestAnimationFrame(() => {
+      updateCanvas();
+    });
+  };
+
+  // 取消编辑
+  const handleCancelEdit = () => {
+    // 恢复原始变换值
+    if (editingLayer) {
+      const originalTransform = layerTransforms[editingLayer] || { rotation: 0, scale: 1 };
+      const originalPosition = layerPositions[editingLayer] || { x: 0, y: 0 };
+
+      setLayerTransforms(prev => ({
+        ...prev,
+        [editingLayer]: originalTransform
+      }));
+
+      setLayerPositions(prev => ({
+        ...prev,
+        [editingLayer]: originalPosition
+      }));
+    }
+
+    // 退出编辑模式
+    setEditMode(false);
+    setEditingLayer(null);
+    setSelectedLayer(null); // 清除选中状态
+
+    // 重新渲染画布
+    requestAnimationFrame(() => {
+      updateCanvas();
+    });
+  };
+
+  // 更新画布
+  const updateCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+
+    // 清空画布
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 按顺序绘制所有可见图层
+    layers.forEach(layer => {
+      if (!layer.visible) return;
+
+      const img = new Image();
+      img.src = layer.src;
+
+      const transform = layerTransforms[layer.id] || { rotation: 0, scale: 1 };
+      const position = layerPositions[layer.id] || { x: 0, y: 0 };
+
+      // 保存当前状态
+      ctx.save();
+
+      // 应用变换
+      ctx.translate(position.x * dpr, position.y * dpr);
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((transform.rotation * Math.PI) / 180);
+      ctx.scale(transform.scale, transform.scale);
+      ctx.translate(-canvas.width / 2, -canvas.height / 2);
+
+      // 绘制图像
+      const imageRatio = img.width / img.height;
+      let targetWidth, targetHeight, x, y;
+
+      if (imageRatio === 1) {
+        const size = Math.min(canvas.width, canvas.height);
+        targetWidth = size;
+        targetHeight = size;
+        x = (canvas.width - size) / 2;
+        y = (canvas.height - size) / 2;
+      } else if (imageRatio > 1) {
+        targetWidth = canvas.width;
+        targetHeight = canvas.width / imageRatio;
+        x = 0;
+        y = (canvas.height - targetHeight) / 2;
+      } else {
+        targetHeight = canvas.height;
+        targetWidth = canvas.height * imageRatio;
+        x = (canvas.width - targetWidth) / 2;
+        y = 0;
+      }
+
+      ctx.drawImage(img, x, y, targetWidth, targetHeight);
+
+      // 恢复状态
+      ctx.restore();
+    });
+  }, [layers, layerTransforms, layerPositions]);
+
+  // 当图层状态改变时更新画布
+  useEffect(() => {
+    updateCanvas();
+  }, [layers, layerTransforms, layerPositions, updateCanvas]);
+
+  // 处理画布鼠标按下
+  const [moveDistance, setMoveDistance] = useState(0);
+  const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
+  const moveThreshold = 5; // 移动阈值，超过这个距离视为拖动
+
+  const handleCanvasMouseDown = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // 获取点击的图层
+    const clickedLayerId = getClickedLayer(x, y);
+    
+    if (clickedLayerId) {
+      setSelectedLayer(clickedLayerId);
+      setIsDraggingImage(true);
+      setDragStart({ x, y });
+      setInitialPosition({ x, y });
+      setMoveDistance(0);
+    } else {
+      setSelectedLayer(null);
+      if (editMode) {
+        handleCancelEdit();
+      }
+    }
+  };
+
+  // 处理画布鼠标移动
+  const handleCanvasMouseMove = useCallback((e) => {
+    if (!isDraggingImage || editMode) return;
+    
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // 计算移动距离
+    const dx = x - initialPosition.x;
+    const dy = y - initialPosition.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    setMoveDistance(distance);
+
+    if (selectedLayer !== null) {
+      const deltaX = x - dragStart.x;
+      const deltaY = y - dragStart.y;
+      
+      setLayerPositions(prev => ({
+        ...prev,
+        [selectedLayer]: {
+          x: (prev[selectedLayer]?.x || 0) + deltaX,
+          y: (prev[selectedLayer]?.y || 0) + deltaY
+        }
+      }));
+      
+      setDragStart({ x, y });
+    }
+  }, [isDraggingImage, selectedLayer, dragStart, initialPosition, editMode]);
+
+  // 处理画布鼠标松开
+  const handleCanvasMouseUp = () => {
+    if (isDraggingImage && selectedLayer && moveDistance < moveThreshold) {
+      // 如果移动距离小于阈值，视为点击，进入编辑模式
+      handleEditLayer(selectedLayer);
+    }
+    setIsDraggingImage(false);
+    setMoveDistance(0);
+  };
+
+  // 处理画布触摸开始
+  const handleCanvasTouchStart = (e) => {
+    if (!hasImage) return;
+    
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    
+    // 获取触摸的图层
+    const clickedLayerId = getClickedLayer(x, y);
+    if (clickedLayerId) {
+      setSelectedLayer(clickedLayerId);
+      setIsDraggingImage(true);
+      setDragStart({ x, y });
+      setInitialPosition({ x, y });
+      setMoveDistance(0);
+    } else {
+      setSelectedLayer(null);
+      if (editMode) {
+        handleCancelEdit();
+      }
+    }
+  };
+
+  // 处理画布触摸移动
+  const handleCanvasTouchMove = useCallback((e) => {
+    if (!isDraggingImage || editMode) return;
+    e.preventDefault();
+    
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    
+    // 计算移动距离
+    const dx = x - initialPosition.x;
+    const dy = y - initialPosition.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    setMoveDistance(distance);
+
+    if (selectedLayer !== null) {
+      const deltaX = x - dragStart.x;
+      const deltaY = y - dragStart.y;
+      
+      setLayerPositions(prev => ({
+        ...prev,
+        [selectedLayer]: {
+          x: (prev[selectedLayer]?.x || 0) + deltaX,
+          y: (prev[selectedLayer]?.y || 0) + deltaY
+        }
+      }));
+      
+      setDragStart({ x, y });
+    }
+  }, [isDraggingImage, selectedLayer, dragStart, initialPosition, editMode]);
+
+  // 处理画布触摸结束
+  const handleCanvasTouchEnd = () => {
+    if (isDraggingImage && selectedLayer && moveDistance < moveThreshold) {
+      // 如果移动距离小于阈值，视为点击，进入编辑模式
+      handleEditLayer(selectedLayer);
+    }
+    setIsDraggingImage(false);
+    setMoveDistance(0);
+  };
+
+  // 移除旧的重复函数
+  const moveLayer = useCallback((deltaX, deltaY) => {
+    if (selectedLayer !== null) {
+      setLayerPositions(prev => ({
+        ...prev,
+        [selectedLayer]: {
+          x: (prev[selectedLayer]?.x || 0) + deltaX,
+          y: (prev[selectedLayer]?.y || 0) + deltaY
+        }
+      }));
+    }
+  }, [selectedLayer]);
+
+  // 缓存图片
+  const cacheImage = useCallback((layer) => {
+    return new Promise((resolve) => {
+      if (imageCache[layer.id]) {
+        resolve(imageCache[layer.id]);
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        setImageCache(prev => ({
+          ...prev,
+          [layer.id]: img
+        }));
+        resolve(img);
+      };
+      img.src = layer.src;
+    });
+  }, [imageCache]);
+
+  // 创建离屏画布
+  useEffect(() => {
+    if (dimensions.width && dimensions.height) {
+      const offscreen = document.createElement('canvas');
+      const dpr = window.devicePixelRatio || 1;
+      offscreen.width = dimensions.width * dpr;
+      offscreen.height = dimensions.height * dpr;
+      offscreenCanvasRef.current = offscreen;
+    }
+  }, [dimensions]);
 
   // 判断点击位置是否在图片内
   const isPointInImage = useCallback((x, y, imageInfo) => {
@@ -416,308 +873,6 @@ export default function Draw() {
     }
     return null;
   }, [layers, layerPositions, isPointInImage]);
-
-  // 处理画布鼠标按下
-  const handleCanvasMouseDown = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // 获取点击的图层
-    const clickedLayerId = getClickedLayer(x, y);
-    
-    if (clickedLayerId) {
-      setIsDraggingImage(true);
-      setDragStart({ x, y });
-      // 设置选中的图层
-      setSelectedLayer(clickedLayerId);
-    } else {
-      // 如果点击空白处，取消选中
-      setSelectedLayer(null);
-    }
-  };
-
-  // 处理画布触摸开始
-  const handleCanvasTouchStart = (e) => {
-    if (!hasImage) return;
-    
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    
-    // 获取触摸的图层
-    const clickedLayerId = getClickedLayer(x, y);
-    if (clickedLayerId) {
-      setSelectedLayer(clickedLayerId);
-      setIsDraggingImage(true);
-      setDragStart({ x, y });
-    } else {
-      setSelectedLayer(null);
-    }
-  };
-
-  // 缓存图片
-  const cacheImage = useCallback((layer) => {
-    return new Promise((resolve) => {
-      if (imageCache[layer.id]) {
-        resolve(imageCache[layer.id]);
-        return;
-      }
-
-      const img = new Image();
-      img.onload = () => {
-        setImageCache(prev => ({
-          ...prev,
-          [layer.id]: img
-        }));
-        resolve(img);
-      };
-      img.src = layer.src;
-    });
-  }, [imageCache]);
-
-  // 创建离屏画布
-  useEffect(() => {
-    if (dimensions.width && dimensions.height) {
-      const offscreen = document.createElement('canvas');
-      const dpr = window.devicePixelRatio || 1;
-      offscreen.width = dimensions.width * dpr;
-      offscreen.height = dimensions.height * dpr;
-      offscreenCanvasRef.current = offscreen;
-    }
-  }, [dimensions]);
-
-  // 在图层状态变化时重新渲染
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-
-    // 清空画布
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 按顺序渲染图层
-    const renderLayerPromises = [...layers].reverse().map(layer => {
-      if (!layer.visible) return Promise.resolve();
-
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        
-        img.onload = () => {
-          try {
-            const imageRatio = img.width / img.height;
-            let targetWidth, targetHeight, x, y;
-
-            if (imageRatio === 1) {
-              const size = Math.min(canvas.width, canvas.height);
-              targetWidth = size;
-              targetHeight = size;
-              x = (canvas.width - size) / 2;
-              y = (canvas.height - size) / 2;
-            } else if (imageRatio > 1) {
-              targetWidth = canvas.width;
-              targetHeight = canvas.width / imageRatio;
-              x = 0;
-              y = (canvas.height - targetHeight) / 2;
-            } else {
-              targetHeight = canvas.height;
-              targetWidth = canvas.height * imageRatio;
-              x = (canvas.width - targetWidth) / 2;
-              y = 0;
-            }
-
-            // 应用图层位置偏移
-            const position = layerPositions[layer.id] || { x: 0, y: 0 };
-            
-            ctx.save();
-            
-            // 使用 transform 优化变换操作
-            ctx.translate(position.x * dpr, position.y * dpr);
-
-            // 为选中的图层添加效果
-            if (layer.id === selectedLayer) {
-              ctx.shadowColor = 'rgba(59, 130, 246, 0.5)';
-              ctx.shadowBlur = 8;
-              ctx.shadowOffsetX = 0;
-              ctx.shadowOffsetY = 0;
-            }
-
-            ctx.drawImage(img, x, y, targetWidth, targetHeight);
-            ctx.restore();
-            resolve();
-          } catch (error) {
-            console.error('Error drawing layer:', error);
-            reject(error);
-          }
-        };
-
-        img.onerror = () => {
-          console.error('Error loading image for layer:', layer.id);
-          reject(new Error('Image load failed'));
-        };
-
-        img.src = layer.src;
-      });
-    });
-
-    // 等待所有图层渲染完成
-    Promise.all(renderLayerPromises).catch(error => {
-      console.error('Error rendering layers:', error);
-    });
-  }, [layers, canvasRef, layerPositions, selectedLayer]);
-
-  // 抽离图层绘制逻辑
-  const drawLayer = (ctx, img, layer) => {
-    const dpr = window.devicePixelRatio || 1;
-    const canvas = ctx.canvas;
-    
-    // 计算图片尺寸和位置
-    const imageRatio = img.width / img.height;
-    let targetWidth, targetHeight, x, y;
-
-    if (imageRatio === 1) {
-      const size = Math.min(canvas.width, canvas.height);
-      targetWidth = size;
-      targetHeight = size;
-      x = (canvas.width - size) / 2;
-      y = (canvas.height - size) / 2;
-    } else if (imageRatio > 1) {
-      targetWidth = canvas.width;
-      targetHeight = canvas.width / imageRatio;
-      x = 0;
-      y = (canvas.height - targetHeight) / 2;
-    } else {
-      targetHeight = canvas.height;
-      targetWidth = canvas.height * imageRatio;
-      x = (canvas.width - targetWidth) / 2;
-      y = 0;
-    }
-
-    // 应用图层位置偏移
-    const position = layerPositions[layer.id] || { x: 0, y: 0 };
-    
-    ctx.save();
-    
-    // 使用 transform 优化变换操作
-    const transform = new DOMMatrix()
-      .translate(position.x * dpr, position.y * dpr);
-    ctx.setTransform(transform);
-
-    // 为选中的图层添加效果
-    if (layer.id === selectedLayer) {
-      ctx.shadowColor = 'rgba(59, 130, 246, 0.5)';
-      ctx.shadowBlur = 8;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 0;
-    }
-
-    ctx.drawImage(img, x, y, targetWidth, targetHeight);
-    ctx.restore();
-  };
-
-  // 优化移动图层的函数
-  const moveLayer = useCallback((layerId, deltaX, deltaY) => {
-    const moveFrame = requestAnimationFrame(() => {
-      setLayerPositions(prev => ({
-        ...prev,
-        [layerId]: {
-          x: (prev[layerId]?.x || 0) + deltaX,
-          y: (prev[layerId]?.y || 0) + deltaY
-        }
-      }));
-    });
-    return () => cancelAnimationFrame(moveFrame);
-  }, []);
-
-  // 处理画布鼠标移动
-  const handleCanvasMouseMove = useCallback((e) => {
-    if (!isDraggingImage || (!selectedLayer && !hasImage)) return;
-    
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const deltaX = (x - dragStart.x) / (window.devicePixelRatio || 1);
-    const deltaY = (y - dragStart.y) / (window.devicePixelRatio || 1);
-    
-    const layerId = selectedLayer || layers[0]?.id;
-    if (layerId) {
-      moveLayer(layerId, deltaX, deltaY);
-    }
-    
-    setDragStart({ x, y });
-  }, [isDraggingImage, selectedLayer, hasImage, layers, dragStart, moveLayer]);
-
-  // 处理画布鼠标松开
-  const handleCanvasMouseUp = () => {
-    setIsDraggingImage(false);
-  };
-
-  // 处理触摸拖动开始
-  const handleTouchStart = (e, index) => {
-    const touch = e.touches[0];
-    const item = e.currentTarget;
-    const startY = touch.clientY;
-    const startTop = item.offsetTop;
-    
-    const handleTouchMove = (e) => {
-      const touch = e.touches[0];
-      const deltaY = touch.clientY - startY;
-      const newTop = startTop + deltaY;
-      
-      // 计算新的位置索引
-      const itemHeight = item.offsetHeight;
-      const newIndex = Math.round(newTop / itemHeight);
-      const targetIndex = Math.max(0, Math.min(layers.length - 1, newIndex));
-      
-      if (targetIndex !== index) {
-        handleLayerMove(index, targetIndex);
-      }
-    };
-    
-    const handleTouchEnd = () => {
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-    };
-    
-    document.addEventListener('touchmove', handleTouchMove);
-    document.addEventListener('touchend', handleTouchEnd);
-  };
-
-  // 处理画布触摸移动
-  const handleCanvasTouchMove = useCallback((e) => {
-    if (!isDraggingImage || (!selectedLayer && !hasImage)) return;
-    e.preventDefault();
-    
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    
-    const deltaX = x - dragStart.x;
-    const deltaY = y - dragStart.y;
-    
-    const layerId = selectedLayer || layers[0]?.id;
-    if (layerId) {
-      moveLayer(layerId, deltaX, deltaY);
-    }
-    
-    setDragStart({ x, y });
-  }, [isDraggingImage, selectedLayer, hasImage, layers, dragStart, moveLayer]);
-
-  // 处理画布触摸结束
-  const handleCanvasTouchEnd = () => {
-    setIsDraggingImage(false);
-  };
 
   // 处理画布鼠标离开
   const handleCanvasMouseLeave = useCallback(() => {
@@ -807,72 +962,17 @@ export default function Draw() {
 
   // 处理返回按钮点击
   const handleBackEdit = () => {
-    setEditMode(null);
-  };
-
-  const handleRotateChange = (angle) => {
-    setCurrentAngle(angle);
-    
-    // 更新画布上的图层旋转
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (!ctx) return;
-    
-    // 清空画布
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // 填充白色背景
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // 重新绘制所有图层
-    layers.forEach(layer => {
-      if (!layer.visible) return;
-      
-      const img = new Image();
-      img.onload = () => {
-        ctx.save();
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        ctx.restore();
-      };
-      img.src = layer.src;
-    });
-  };
-
-  const handleRotateComplete = (angle) => {
-    setLayers(prevLayers => {
-      const updatedLayers = [...prevLayers];
-      if (updatedLayers.length > 0) {
-        const layer = updatedLayers[0];
-        const newAngle = ((layer.angle || 0) + angle) % 360; // 确保角度在 0-360 范围内
-        updatedLayers[0] = { ...layer, angle: newAngle };
-      }
-      return updatedLayers;
-    });
-    setCurrentAngle(0);
+    // 移除编辑模式相关状态
   };
 
   // 处理关闭弹窗
   const handleCloseEditModal = () => {
-    setIsEditModalOpen(false);
-    setEditMode(null);
+    // 移除编辑模式相关状态
   };
 
   // 处理编辑后的图片更新
   const handleImageUpdate = (editedImageData) => {
-    setLayers(prev => {
-      const updatedLayers = [...prev];
-      const targetIndex = layers.length === 1 ? 0 : updatedLayers.findIndex(layer => layer.id === selectedLayer);
-      
-      if (targetIndex !== -1) {
-        updatedLayers[targetIndex] = { 
-          ...updatedLayers[targetIndex], 
-          src: editedImageData 
-        };
-      }
-      
-      return updatedLayers;
-    });
+    // 移除编辑模式相关状态
   };
 
   // 处理点击和触摸事件以打开AI肖像模态框
@@ -933,6 +1033,7 @@ export default function Draw() {
       formData.append('styleId', styleId);
 
       // 发送到服务端 API
+      console.log('发送上传请求...');
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
@@ -946,11 +1047,16 @@ export default function Draw() {
 
       const data = await response.json();
       console.log('上传成功，文件URL:', data.url);
-      return data.url;
+      return { url: data.url, fileName: data.fileName };
     } catch (error) {
       console.error('上传过程出错:', error);
       throw error;
     }
+  };
+
+  // 处理编辑按钮点击
+  const handleEditClick = (mode) => {
+    // 移除编辑模式相关状态
   };
 
   // 新增功能按钮处理函数
@@ -972,40 +1078,28 @@ export default function Draw() {
 
   // 新增编辑工具处理函数
   const handleMatting = () => {
-    if (layers.length > 1 && !selectedLayer) {
-      alert('请先选择要编辑的图层');
-      return;
-    }
-    setEditMode('matting');
-    setIsEditModalOpen(true);
+    // 移除编辑模式相关状态
   };
 
   const handleEnhance = () => {
-    if (layers.length > 1 && !selectedLayer) {
-      alert('请先选择要编辑的图层');
-      return;
-    }
-    setEditMode('enhance');
-    setIsEditModalOpen(true);
+    // 移除编辑模式相关状态
   };
 
   const handleZoom = () => {
-    if (layers.length > 1 && !selectedLayer) {
-      alert('请先选择要编辑的图层');
-      return;
-    }
-    setEditMode('zoom');
-    setIsEditModalOpen(true);
+    // 移除编辑模式相关状态
   };
 
   const handleRotate = () => {
-    if (layers.length > 1 && !selectedLayer) {
-      alert('请先选择要编辑的图层');
-      return;
-    }
-    setEditMode('rotate');
-    setIsEditModalOpen(true);
+    // 移除编辑模式相关状态
   };
+
+  useEffect(() => {
+    if (hasImage) {
+      setTimeout(() => setShowButtons(true), 300);
+    } else {
+      setShowButtons(false);
+    }
+  }, [hasImage]);
 
   return (
     <Layout>
@@ -1013,31 +1107,12 @@ export default function Draw() {
         className="canvas-container"
         style={{
           width: '100%',
-          height: `calc(100vh - 160px)`, /* 减去两个工具栏的高度：80px + 80px */
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '1rem',
+          height: '100vh',
+          position: 'relative',
           overflow: 'hidden'
         }}
       >
-        <motion.div
-          className={`canvas-wrapper ${isDragging ? 'dragging' : ''} ${hasImage ? 'has-image' : ''}`}
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative'
-          }}
-        >
+        <div className="canvas-wrapper">
           <canvas
             ref={canvasRef}
             className={`draw-canvas ${isDragging ? 'dragging' : ''}`}
@@ -1174,7 +1249,8 @@ export default function Draw() {
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 6v12"/>
+                            <path d="M6 12h12"/>
                           </svg>
                         </button>
                         <button
@@ -1213,7 +1289,20 @@ export default function Draw() {
                           title="删除图层"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                            <path d="M3 6h18"/>
+                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                          </svg>
+                        </button>
+                        <button
+                          className="layer-edit-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditLayer(layer.id);
+                          }}
+                          title="编辑图层"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M15.2328 2.23284C15.9833 1.48284 16.9833 1.01584 18.0158 1.01584C20.0158 1.01584 21.5158 2.51584 21.5158 4.51584V21.5158C21.5158 23.5158 20.5158 24.5158 18.5158 24.5158H5.48421C3.48421 24.5158 2.48421 23.5158 2.48421 21.5158V4.51584C2.48421 2.51584 3.48421 1.51584 4.48421 1.01584C5.98421 1.01584 7.0158 1.48284 8.76785 2.23284L12 5.66421L15.2328 2.23284Z"/>
                           </svg>
                         </button>
                       </div>
@@ -1241,344 +1330,159 @@ export default function Draw() {
             )}
           </div>
 
-          {hasImage && (
-            <motion.button
-              className="canvas-download"
-              onClick={handleDownload}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              title="下载图片"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-            </motion.button>
-          )}
-          {hasImage && (
-            <motion.button
-              className="canvas-archive"
-              onClick={handleArchive}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              title="存档"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 8v13H3L3 8" />
-                <path d="M1 3h22v5H1z" />
-                <path d="M10 12h4" />
-              </svg>
-            </motion.button>
-          )}
-          {!hasImage && (
-            <div className="upload-hint">
-              <div className="hint-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-              </div>
-              <h3>点击或拖拽上传图片</h3>
-              <p>支持 JPG、PNG、GIF 格式</p>
-            </div>
-          )}
-        </motion.div>
-
-        {hasImage && (
-          <motion.div
-            className="canvas-tools"
+          <motion.div 
+            className={`canvas-buttons ${showButtons ? 'visible' : ''}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <div className={`tools-buttons ${editMode ? 'editing' : ''}`}>
-              {!editMode ? (
-                <>
-                  <motion.button
-                    className="tool-button matting"
-                    onClick={handleMatting}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="6" cy="6" r="3" />
-                      <circle cx="6" cy="18" r="3" />
-                      <line x1="20" y1="4" x2="8.12" y2="15.88" />
-                      <line x1="14.47" y1="14.48" x2="20" y2="20" />
-                      <line x1="8.12" y1="8.12" x2="12" y2="12" />
-                    </svg>
-                    <span className="button-text">抠图</span>
-                  </motion.button>
-
-                  <motion.button
-                    className="tool-button enhance"
-                    onClick={handleEnhance}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="3" />
-                      <path d="M12 4v2M12 18v2M4 12H2M22 12h-2M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41M19.07 19.07l-1.41-1.41M6.34 6.34L4.93 4.93" />
-                    </svg>
-                    <span className="button-text">增强</span>
-                  </motion.button>
-
-                  <motion.button
-                    className="tool-button erase"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M20 20H7L3 16c-.7-.7-.7-1.3 0-2l7-7c.7-.7 1.3-.7 2 0l5 5c.7.7.7 1.3 0 2l-7 7" />
-                    </svg>
-                    <span className="button-text">擦除</span>
-                  </motion.button>
-
-                  <motion.button
-                    className="tool-button rotate"
-                    onClick={handleRotate}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                      <path d="M3 3v5h5" />
-                    </svg>
-                    <span className="button-text">旋转</span>
-                  </motion.button>
-
-                  <motion.button
-                    className="tool-button zoom"
-                    onClick={handleZoom}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="11" cy="11" r="8" />
-                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      <line x1="11" y1="8" x2="11" y2="14" />
-                      <line x1="8" y1="11" x2="14" y2="11" />
-                    </svg>
-                    <span className="button-text">缩放</span>
-                  </motion.button>
-                </>
-              ) : (
-                <>
-                  <motion.div
-                    className="edit-controls"
-                    initial={{ x: 20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ duration: 0.3, delay: 0.1 }}
-                  >
-                    {/* 移除所有编辑模式下的按钮 */}
-                  </motion.div>
-                </>
-              )}
-            </div>
-          </motion.div>
-        )}
-        
-        <motion.div 
-          className="canvas-buttons"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          {!hasImage ? (
-            <div className="initial-buttons">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileSelect}
-                accept="image/*"
-                style={{ display: 'none' }}
-              />
+            {hasImage && (
               <motion.button
-                className="canvas-button upload"
-                onClick={handleUpload}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-                上传图片
-              </motion.button>
-              <motion.button
-                className="canvas-button archive"
+                className="archive-button"
                 onClick={handleArchive}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                title="存档仓库"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3 }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 8v13H3L3 8" />
                   <path d="M1 3h22v5H1z" />
                   <path d="M10 12h4" />
                 </svg>
-                存档仓库
               </motion.button>
-            </div>
-          ) : (
-            <div className="function-buttons">
-              <motion.button
-                className="canvas-button smart-portrait"
-                onClick={handleAIPortraitClick}
-                onTouchStart={handleAIPortraitTouch}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
-                  <path d="M12 6v12"/>
-                  <path d="M6 12h12"/>
-                </svg>
-                智能画像
-              </motion.button>
-              
-              <motion.button
-                className="canvas-button style"
-                onClick={handleStyleOverlay}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <path d="M2 2h20v20H2z"/>
-                  <path d="M7 7h10v10H7z"/>
-                </svg>
-                风格叠加
-              </motion.button>
-              
-              <motion.button
-                className="canvas-button product"
-                onClick={handleProductSelect}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <path d="M21 8l-3-6H6L3 8v12h18V8z"/>
-                  <path d="M3 8h18"/>
-                  <path d="M15 8a3 3 0 0 0-6 0"/>
-                </svg>
-                商品选择
-              </motion.button>
-              
-              <motion.button
-                className="canvas-button order"
-                onClick={handleOrder}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <path d="M5 12h14"/>
-                  <path d="M12 5l7 7-7 7"/>
-                </svg>
-                订单发货
-              </motion.button>
-            </div>
+            )}
+
+            {!hasImage ? (
+              <div className="initial-buttons">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                />
+                <motion.button
+                  className="canvas-button upload"
+                  onClick={handleUpload}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  上传图片
+                </motion.button>
+                <motion.button
+                  className="canvas-button archive"
+                  onClick={handleArchive}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 8v13H3L3 8" />
+                    <path d="M1 3h22v5H1z" />
+                    <path d="M10 12h4" />
+                  </svg>
+                  存档仓库
+                </motion.button>
+              </div>
+            ) : (
+              <div className="function-buttons">
+                <motion.button
+                  className="canvas-button smart-portrait"
+                  onClick={handleAIPortraitClick}
+                  onTouchStart={handleAIPortraitTouch}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                    <path d="M12 6v12"/>
+                    <path d="M6 12h12"/>
+                  </svg>
+                  智能画像
+                </motion.button>
+                
+                <motion.button
+                  className="canvas-button style"
+                  onClick={handleStyleOverlay}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                    <path d="M2 2h20v20H2z"/>
+                    <path d="M7 7h10v10H7z"/>
+                  </svg>
+                  风格叠加
+                </motion.button>
+                
+                <motion.button
+                  className="canvas-button product"
+                  onClick={handleProductSelect}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                    <path d="M21 8l-3-6H6L3 8v12h18V8z"/>
+                    <path d="M3 8h18"/>
+                    <path d="M15 8a3 3 0 0 0-6 0"/>
+                  </svg>
+                  商品选择
+                </motion.button>
+                
+                <motion.button
+                  className="canvas-button order"
+                  onClick={handleOrder}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                    <path d="M5 12h14"/>
+                    <path d="M12 5l7 7-7 7"/>
+                  </svg>
+                  订单发货
+                </motion.button>
+              </div>
+            )}
+          </motion.div>
+        </div>
+
+        <AIPortraitModal
+          isOpen={showAIPortraitModal}
+          onClose={() => setShowAIPortraitModal(false)}
+          onSelect={handlePortraitStyleSelect}
+        />
+
+        <ArchiveModal
+          isOpen={showArchiveModal}
+          onClose={() => setShowArchiveModal(false)}
+        />
+
+        <AnimatePresence>
+          {editMode && editingLayer && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              transition={{ duration: 0.3 }}
+            >
+              <ImageEditor
+                layer={layers.find(l => l.id === editingLayer)}
+                onTransformChange={handleTransformChange}
+                onConfirm={handleConfirmEdit}
+                onCancel={handleCancelEdit}
+                onRotationChange={handleRotationChange}
+                onScaleChange={handleScaleChange}
+              />
+            </motion.div>
           )}
-        </motion.div>
+        </AnimatePresence>
       </div>
-
-      <EditModal
-        isOpen={isEditModalOpen}
-        onClose={handleCloseEditModal}
-        layers={layers}
-        selectedLayer={selectedLayer}
-        dimensions={dimensions}
-        canvasRef={canvasRef}
-        onImageUpdate={handleImageUpdate}
-        editMode={editMode}
-      >
-        {editMode === 'matting' && (
-          <motion.button 
-            className="tool-button" 
-            onClick={() => {}}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
-              <path d="M12 6v12"/>
-              <path d="M6 12h12"/>
-            </svg>
-            <span className="button-text">抠图</span>
-          </motion.button>
-        )}
-        
-        {editMode === 'enhance' && (
-          <motion.button 
-            className="tool-button" 
-            onClick={() => {}}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M12 4v2M12 18v2M4 12H2M22 12h-2M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41M19.07 19.07l-1.41-1.41M6.34 6.34L4.93 4.93" />
-            </svg>
-            <span className="button-text">增强</span>
-          </motion.button>
-        )}
-        
-        {editMode === 'erase' && (
-          <motion.button 
-            className="tool-button" 
-            onClick={() => {}}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 20H7L3 16c-.7-.7-.7-1.3 0-2l7-7c.7-.7 1.3-.7 2 0l5 5c.7.7.7 1.3 0 2l-7 7" />
-            </svg>
-            <span className="button-text">擦除</span>
-          </motion.button>
-        )}
-        
-        {editMode === 'rotate' && (
-          <motion.button 
-            className="tool-button" 
-            onClick={() => {}}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-            </svg>
-            <span className="button-text">旋转</span>
-          </motion.button>
-        )}
-        
-        {editMode === 'zoom' && (
-          <motion.button 
-            className="tool-button" 
-            onClick={() => {}}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              <line x1="11" y1="8" x2="11" y2="14" />
-              <line x1="8" y1="11" x2="14" y2="11" />
-            </svg>
-            <span className="button-text">缩放</span>
-          </motion.button>
-        )}
-      </EditModal>
-
-      {/* AI画像弹窗 */}
-      <AIPortraitModal
-        isOpen={showAIPortraitModal}
-        onClose={() => setShowAIPortraitModal(false)}
-        onSelect={handlePortraitStyleSelect}
-      />
     </Layout>
   );
 }
