@@ -9,8 +9,8 @@ export const config = {
 };
 
 const cos = new COS({
-  SecretId: 'AKIDcDboqlTyGML7ua9kDVfeR5Yryu1xqfM4',
-  SecretKey: '1rY4NVQAh2A4lEYijYAYs31lKjwwhEZk',
+  SecretId: process.env.TENCENT_CLOUD_SECRET_ID,
+  SecretKey: process.env.TENCENT_CLOUD_SECRET_KEY,
 });
 
 export default async function handler(req, res) {

@@ -417,11 +417,22 @@ export default function Draw() {
     if (editMode) return;
     setEditMode(true);
     setEditingLayer(layerId);
-    // 初始化或获取现有的变换值
-    const currentTransform = layerTransforms[layerId] || { rotation: 0, scale: 1 };
+    
+    // 保持现有的变换值，如果没有则使用默认值
+    const currentTransform = layerTransforms[layerId] || { 
+      rotation: 0, 
+      scale: 1,
+      translateX: layerPositions[layerId]?.x || 0,
+      translateY: layerPositions[layerId]?.y || 0
+    };
+    
+    // 不重置变换值，保持当前状态
     setLayerTransforms(prev => ({
       ...prev,
-      [layerId]: currentTransform
+      [layerId]: {
+        ...prev[layerId],
+        ...currentTransform
+      }
     }));
   };
 
@@ -507,12 +518,15 @@ export default function Draw() {
   const handleConfirmEdit = (transform) => {
     if (!editingLayer) return;
 
-    // 更新变换
+    // 更新变换，保持现有的状态
     setLayerTransforms(prev => ({
       ...prev,
       [editingLayer]: {
+        ...prev[editingLayer],
         rotation: transform.rotate,
-        scale: transform.scale
+        scale: transform.scale,
+        translateX: transform.translateX,
+        translateY: transform.translateY
       }
     }));
 
@@ -1478,6 +1492,12 @@ export default function Draw() {
                 onCancel={handleCancelEdit}
                 onRotationChange={handleRotationChange}
                 onScaleChange={handleScaleChange}
+                initialTransform={{
+                  rotate: layerTransforms[editingLayer]?.rotation || 0,
+                  scale: layerTransforms[editingLayer]?.scale || 1,
+                  translateX: layerPositions[editingLayer]?.x || 0,
+                  translateY: layerPositions[editingLayer]?.y || 0
+                }}
               />
             </motion.div>
           )}

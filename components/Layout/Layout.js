@@ -9,7 +9,6 @@ export default function Layout({ children }) {
         {children}
       </main>
       <Footer />
-      <div className="function-background"></div>
     </div>
   );
 }

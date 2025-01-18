@@ -64,46 +64,60 @@ const EditModal = ({
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    const img = new Image();
-    img.onload = () => {
-      const imageRatio = img.width / img.height;
-      const canvasRatio = dimensions.width / dimensions.height;
-      let targetWidth, targetHeight, x, y;
+    // 只有在没有编辑历史时才初始化
+    if (editHistory.length === 0) {
+      const img = new Image();
+      img.onload = () => {
+        const imageRatio = img.width / img.height;
+        const canvasRatio = dimensions.width / dimensions.height;
+        let targetWidth, targetHeight, x, y;
 
-      if (imageRatio > canvasRatio) {
-        targetWidth = dimensions.width;
-        targetHeight = targetWidth / imageRatio;
-        x = 0;
-        y = (dimensions.height - targetHeight) / 2;
-      } else {
-        targetHeight = dimensions.height;
-        targetWidth = targetHeight * imageRatio;
-        x = (dimensions.width - targetWidth) / 2;
-        y = 0;
-      }
+        if (imageRatio > canvasRatio) {
+          targetWidth = dimensions.width;
+          targetHeight = targetWidth / imageRatio;
+          x = 0;
+          y = (dimensions.height - targetHeight) / 2;
+        } else {
+          targetHeight = dimensions.height;
+          targetWidth = targetHeight * imageRatio;
+          x = (dimensions.width - targetWidth) / 2;
+          y = 0;
+        }
+        
+        ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+        ctx.drawImage(img, x, y, targetWidth, targetHeight);
+
+        // 保存初始状态到临时画布
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(canvas, 0, 0);
+        setInitialCanvas(tempCanvas);
+
+        const initialState = canvas.toDataURL();
+        setEditHistory([initialState]);
+        setCurrentStep(0);
+      };
+
+      const targetImage = layers.length === 1 
+        ? layers[0] 
+        : layers.find(layer => layer.id === selectedLayer);
       
-      ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-      ctx.drawImage(img, x, y, targetWidth, targetHeight);
-
-      // 保存初始状态到临时画布
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = canvas.width;
-      tempCanvas.height = canvas.height;
-      const tempCtx = tempCanvas.getContext('2d');
-      tempCtx.drawImage(canvas, 0, 0);
-      setInitialCanvas(tempCanvas);
-
-      const initialState = canvas.toDataURL();
-      setEditHistory([initialState]);
-      setCurrentStep(0);
-    };
-
-    const targetImage = layers.length === 1 
-      ? layers[0] 
-      : layers.find(layer => layer.id === selectedLayer);
-    
-    if (targetImage) {
-      img.src = targetImage.src;
+      if (targetImage) {
+        img.src = targetImage.src;
+      }
+    } else {
+      // 如果有编辑历史，加载最后一个状态
+      const lastState = editHistory[currentStep];
+      if (lastState) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+          ctx.drawImage(img, 0, 0, canvas.width / dpr, canvas.height / dpr);
+        };
+        img.src = lastState;
+      }
     }
   }, [isOpen, layers, dimensions, selectedLayer]);
 
@@ -335,129 +349,179 @@ const EditModal = ({
         }),
       });
 
-      console.log('收到响应:', response.status);
-
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `增强请求失败: ${response.status}`);
+        throw new Error(`增强请求失败: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('响应数据:', data);
       
       if (!data.success) {
         throw new Error(data.message || '增强处理失败');
       }
-      
-      if (!data.data?.enhanced_image) {
-        throw new Error('返回数据中缺少增强结果');
-      }
 
-      // 创建新图片对象
+      // 加载增强后的图片
       const img = new Image();
-      
-      img.onerror = (error) => {
-        console.error('图片加载失败:', error);
-        setIsEditing(false);
-        alert('图片加载失败，请重试');
-      };
-      
       img.onload = () => {
-        console.log('增强后的图片加载成功，尺寸:', img.width, 'x', img.height);
-        
-        // 确保画布引用存在
-        if (!modalCanvasRef.current) {
-          console.error('画布引用不存在');
-          return;
-        }
-        
         const canvas = modalCanvasRef.current;
-        const ctx = canvas.getContext('2d');
+        if (!canvas) return;
         
-        // 输出当前画布状态
-        console.log('当前画布状态:', {
-          width: canvas.width,
-          height: canvas.height,
-          style: {
-            width: canvas.style.width,
-            height: canvas.style.height
-          }
-        });
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
         
         // 清空画布
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         // 计算绘制参数
-        const dpr = window.devicePixelRatio || 1;
-        console.log('设备像素比:', dpr);
-        
-        // 确保画布尺寸正确
-        canvas.width = dimensions.width * dpr;
-        canvas.height = dimensions.height * dpr;
-        canvas.style.width = `${dimensions.width}px`;
-        canvas.style.height = `${dimensions.height}px`;
-        
-        // 设置绘制上下文的缩放
-        ctx.scale(dpr, dpr);
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        
         const imageRatio = img.width / img.height;
-        const canvasRatio = dimensions.width / dimensions.height;
+        let targetWidth, targetHeight, x, y;
+
+        if (imageRatio > canvas.width / canvas.height) {
+          targetWidth = canvas.width;
+          targetHeight = canvas.width / imageRatio;
+          x = 0;
+          y = (canvas.height - targetHeight) / 2;
+        } else {
+          targetHeight = canvas.height;
+          targetWidth = canvas.height * imageRatio;
+          x = (canvas.width - targetWidth) / 2;
+          y = 0;
+        }
+
+        ctx.drawImage(img, x, y, targetWidth, targetHeight);
+        saveEditState();
+        setIsEditing(false);
+      };
+      
+      img.src = data.data.enhanced_image;
+      
+    } catch (error) {
+      console.error('增强处理失败:', error);
+      alert('图片增强失败，请重试');
+      setIsEditing(false);
+    }
+  };
+
+  // 处理抠图
+  const handleMatting = async () => {
+    if (!modalCanvasRef.current || isEditing) return;
+    
+    try {
+      setIsEditing(true);
+      const canvas = modalCanvasRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      // 显示加载状态
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'white';
+      ctx.font = '16px Arial';
+      ctx.fillText('正在处理...', canvas.width / 2, canvas.height / 2);
+      
+      console.log('开始抠图处理');
+      
+      // 将canvas转换为base64图片数据
+      const imageData = canvas.toDataURL('image/jpeg', 0.9); // 提高质量到0.9
+      const base64Data = imageData.split(',')[1];
+      
+      console.log('发送抠图请求...');
+      
+      // 调用抠图API
+      const response = await fetch('/api/image/matting', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          image_base64: base64Data
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`抠图请求失败: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || '抠图处理失败');
+      }
+
+      // 加载抠图后的图片
+      const img = new Image();
+      img.crossOrigin = 'anonymous'; // 添加跨域支持
+      
+      img.onload = () => {
+        const canvas = modalCanvasRef.current;
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        
+        // 恢复画布状态
+        ctx.restore();
+        
+        // 清空画布
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 计算绘制参数，保持原始比例
+        const imageRatio = img.width / img.height;
+        const canvasRatio = canvas.width / canvas.height;
         let targetWidth, targetHeight, x, y;
 
         if (imageRatio > canvasRatio) {
-          targetWidth = dimensions.width;
+          targetWidth = canvas.width;
           targetHeight = targetWidth / imageRatio;
           x = 0;
-          y = (dimensions.height - targetHeight) / 2;
+          y = (canvas.height - targetHeight) / 2;
         } else {
-          targetHeight = dimensions.height;
+          targetHeight = canvas.height;
           targetWidth = targetHeight * imageRatio;
-          x = (dimensions.width - targetWidth) / 2;
+          x = (canvas.width - targetWidth) / 2;
           y = 0;
         }
+
+        // 绘制透明背景
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        console.log('绘制增强后的图片，参数:', {
-          imageRatio,
-          canvasRatio,
-          x, y, 
-          targetWidth, 
-          targetHeight,
-          canvasWidth: canvas.width,
-          canvasHeight: canvas.height
-        });
+        // 绘制抠图结果
+        ctx.drawImage(img, x, y, targetWidth, targetHeight);
         
-        // 绘制增强结果
-        try {
-          ctx.drawImage(img, x, y, targetWidth, targetHeight);
-          console.log('增强后的图片绘制完成');
-          
-          // 保存状态并更新UI
-          setIsEditing(false);
-          saveEditState();
-          
-          // 强制重新渲染
-          setPreviewStyle(prev => ({
-            ...prev,
-            transform: `scale(${prev.transform ? 1 : 1.0001})`
-          }));
-        } catch (error) {
-          console.error('绘制增强后的图片时出错:', error);
-          throw error;
-        }
+        // 保存编辑状态
+        saveEditState();
+        setIsEditing(false);
       };
       
-      // 设置图片源为增强结果
-      console.log('开始加载增强后的图片数据');
-      img.crossOrigin = 'anonymous'; // 添加跨域支持
-      img.src = data.data.enhanced_image; // 移除额外的格式转换参数
+      img.onerror = (error) => {
+        console.error('抠图结果加载失败:', error);
+        ctx.restore();
+        setIsEditing(false);
+        alert('图片加载失败，请重试');
+      };
+      
+      img.src = data.data.foreground_image;
+      
     } catch (error) {
-      console.error('增强处理失败:', error);
+      console.error('抠图处理失败:', error);
+      const canvas = modalCanvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.restore();
+      }
+      alert('抠图失败，请重试');
       setIsEditing(false);
-      alert(error.message || '增强处理失败，请重试');
     }
   };
+
+  // 确保在编辑模式为 'matting' 时调用抠图功能
+  useEffect(() => {
+    if (editMode === 'matting' && modalCanvasRef.current) {
+      handleMatting();
+    }
+  }, [editMode]);
 
   // 处理擦除
   const handleErase = (point, lastPoint = null) => {
@@ -799,152 +863,6 @@ const EditModal = ({
     }
   }, [isOpen]);
 
-  // 处理抠图
-  const handleMatting = async () => {
-    if (!modalCanvasRef.current || isEditing) return;
-    
-    setIsEditing(true);
-    const canvas = modalCanvasRef.current;
-    
-    try {
-      // 将canvas转换为base64图片数据
-      const imageData = canvas.toDataURL('image/jpeg', 0.8); // 使用JPEG格式和0.8质量以减小数据大小
-      // 移除base64前缀
-      const base64Data = imageData.split(',')[1];
-      
-      console.log('发送抠图请求...');
-      
-      // 调用抠图API
-      const response = await fetch('/api/image/matting', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          image_base64: base64Data
-        }),
-      });
-
-      console.log('收到响应:', response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `抠图请求失败: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('响应数据:', data);
-      
-      if (!data.success) {
-        throw new Error(data.message || '抠图处理失败');
-      }
-      
-      if (!data.data?.foreground_image) {
-        throw new Error('返回数据中缺少抠图结果');
-      }
-
-      // 创建新图片对象
-      const img = new Image();
-      
-      img.onerror = (error) => {
-        console.error('图片加载失败:', error);
-        setIsEditing(false);
-        alert('图片加载失败，请重试');
-      };
-      
-      img.onload = () => {
-        console.log('图片加载成功，尺寸:', img.width, 'x', img.height);
-        
-        // 确保画布引用存在
-        if (!modalCanvasRef.current) {
-          console.error('画布引用不存在');
-          return;
-        }
-        
-        const canvas = modalCanvasRef.current;
-        const ctx = canvas.getContext('2d');
-        
-        // 输出当前画布状态
-        console.log('当前画布状态:', {
-          width: canvas.width,
-          height: canvas.height,
-          style: {
-            width: canvas.style.width,
-            height: canvas.style.height
-          }
-        });
-        
-        // 清空画布
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // 计算绘制参数
-        const dpr = window.devicePixelRatio || 1;
-        console.log('设备像素比:', dpr);
-        
-        // 确保画布尺寸正确
-        canvas.width = dimensions.width * dpr;
-        canvas.height = dimensions.height * dpr;
-        canvas.style.width = `${dimensions.width}px`;
-        canvas.style.height = `${dimensions.height}px`;
-        
-        // 设置绘制上下文的缩放
-        ctx.scale(dpr, dpr);
-        
-        const imageRatio = img.width / img.height;
-        const canvasRatio = dimensions.width / dimensions.height;
-        let targetWidth, targetHeight, x, y;
-
-        if (imageRatio > canvasRatio) {
-          targetWidth = dimensions.width;
-          targetHeight = targetWidth / imageRatio;
-          x = 0;
-          y = (dimensions.height - targetHeight) / 2;
-        } else {
-          targetHeight = dimensions.height;
-          targetWidth = targetHeight * imageRatio;
-          x = (dimensions.width - targetWidth) / 2;
-          y = 0;
-        }
-        
-        console.log('绘制参数:', {
-          imageRatio,
-          canvasRatio,
-          x, y, 
-          targetWidth, 
-          targetHeight,
-          canvasWidth: canvas.width,
-          canvasHeight: canvas.height
-        });
-        
-        // 绘制抠图结果
-        try {
-          ctx.drawImage(img, x, y, targetWidth, targetHeight);
-          console.log('图片绘制完成');
-        } catch (error) {
-          console.error('绘制图片时出错:', error);
-        }
-        
-        // 保存状态并更新UI
-        setIsEditing(false);
-        saveEditState();
-        
-        // 强制重新渲染
-        setPreviewStyle(prev => ({
-          ...prev,
-          transform: `scale(${prev.transform ? 1 : 1.0001})`
-        }));
-      };
-      
-      // 设置图片源为抠图结果（现在是 base64 数据）
-      console.log('开始加载图片数据');
-      img.src = data.data.foreground_image; // 已经是完整的 base64 数据了
-    } catch (error) {
-      console.error('抠图处理错误:', error);
-      alert(error.message || '抠图处理失败，请重试');
-      setIsEditing(false);
-    }
-  };
-
   // 处理鼠标事件
   const handlePointerDown = (e) => {
     if (editMode !== 'erase') return;
@@ -994,20 +912,6 @@ const EditModal = ({
     updateEraserPosition(point);
   };
 
-  // 更新擦除器位置
-  const updateEraserPosition = (point) => {
-    if (!point || !modalCanvasRef.current) return;
-    
-    const canvas = modalCanvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-
-    // 使用精确的像素位置
-    setEraserPosition({
-      x: Math.round(point.clientX),
-      y: Math.round(point.clientY)
-    });
-  };
-
   // 处理鼠标按下
   const handleMouseDown = (e) => {
     if (editMode !== 'erase') return;
@@ -1030,6 +934,20 @@ const EditModal = ({
     setIsErasing(false);
     setLastPoint(null);
     saveEditState();
+  };
+
+  // 更新擦除器位置
+  const updateEraserPosition = (point) => {
+    if (!point || !modalCanvasRef.current) return;
+    
+    const canvas = modalCanvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+
+    // 使用精确的像素位置
+    setEraserPosition({
+      x: Math.round(point.clientX),
+      y: Math.round(point.clientY)
+    });
   };
 
   // 添加事件监听

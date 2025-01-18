@@ -1,5 +1,6 @@
 import Head from 'next/head';
 import '../styles/globals.css';
+import '../styles/globals/moveable.css';
 import '../styles/modules/edit/modal.css';
 import '../styles/modules/components/ai-portrait-modal.css';
 import ErrorBoundary from '../components/ErrorBoundary';

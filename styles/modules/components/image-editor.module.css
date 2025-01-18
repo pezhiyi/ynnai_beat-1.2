@@ -1,280 +1,350 @@
 .editor {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(255, 255, 255, 0.98);
-  padding: 16px;
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
   z-index: 1000;
-  max-height: 90vh;
-  transform: translateY(0);
-  transition: transform 0.3s ease-in-out;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+  animation: slideUp 0.3s ease-out;
+}
+
+.header {
+  position: relative;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+}
+
+.content {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
 }
 
 .imageWrapper {
-  position: relative;
-  width: 100%;
-  padding: 20px;
-  flex: 1;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  min-height: 0;
-  overflow: hidden;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .imageContainer {
   position: relative;
+  background: #fafafa;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all 0.2s ease;
   width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.imageTarget {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-origin: center;
-}
-
-.imageTarget img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  pointer-events: none;
+  max-width: 360px;
+  margin: 0 auto;
+  padding-top: 100%; /* 改为1:1比例 */
 }
 
 .controls {
-  width: 100%;
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  margin-top: 20px;
+  gap: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  margin: 0 16px;
 }
 
 .controlGroup {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .controlGroup label {
-  min-width: 40px;
-  font-size: 14px;
+  min-width: 36px;
+  font-size: 13px;
   color: #666;
+  font-weight: 500;
 }
 
-.controlGroup span {
-  min-width: 50px;
-  font-size: 14px;
+.value {
+  min-width: 36px;
+  font-size: 12px;
   color: #666;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .slider {
   flex: 1;
+  height: 3px;
   -webkit-appearance: none;
-  height: 4px;
-  background: #e0e0e0;
-  border-radius: 2px;
+  background: #e5e7eb;
+  border-radius: 1.5px;
   outline: none;
+  transition: all 0.2s ease;
 }
 
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 16px;
   height: 16px;
-  background: #3b82f6;
   border-radius: 50%;
+  background: #4f46e5;
   cursor: pointer;
-  transition: background 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
 }
 
-.slider::-webkit-slider-thumb:hover {
-  background: #2563eb;
+.resetButton {
+  padding: 6px 12px;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  color: #666;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 4px 16px;
 }
 
-.header {
+.buttons {
+  position: relative;
+  padding: 12px 16px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #eee;
+  gap: 8px;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  flex-shrink: 0;
+}
+
+.confirm, .cancel {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 80px;
+  text-align: center;
 }
 
 .title {
   font-size: 16px;
-  font-weight: 500;
-  color: #333;
+  font-weight: 600;
+  color: #1a1a1a;
 }
 
 .closeButton {
   background: none;
   border: none;
+  font-size: 20px;
+  color: #666;
+  cursor: pointer;
   padding: 4px;
-  cursor: pointer;
-  color: #666;
-  font-size: 24px;
-  line-height: 1;
-}
-
-.resetButton {
-  width: 100%;
-  background: #f3f4f6;
-  border: none;
-  padding: 8px 16px;
   border-radius: 6px;
-  color: #666;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.resetButton:hover {
-  background: #e5e7eb;
-}
-
-.buttons {
-  display: flex;
-  gap: 12px;
-  padding: 16px;
-  margin-top: auto;
-  border-top: 1px solid #eee;
-}
-
-.buttons button {
-  flex: 1;
-  padding: 12px 24px;
-  border-radius: 8px;
-  border: none;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s ease;
 }
 
-.confirm {
-  background: #3b82f6;
-  color: white;
+.closeButton:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #333;
 }
 
-.confirm:hover {
-  background: #2563eb;
-}
-
-.cancel {
+.closeButton:active {
   background: #f3f4f6;
-  color: #666;
 }
 
-.cancel:hover {
-  background: #e5e7eb;
+.imageTarget {
+  position: absolute;
+  transform-origin: 50% 50%;
+  will-change: transform;
+  display: inline-block;
+  pointer-events: none;
 }
 
-.transformInfo {
-  display: flex;
-  gap: 16px;
-  font-size: 14px;
-  color: #666;
-  background: #f5f5f5;
-  padding: 8px 16px;
-  border-radius: 20px;
+.imageTarget img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transform-origin: 50% 50%;
+  pointer-events: none;
+  transition: transform 0.2s ease;
 }
 
-.quickControls {
-  display: flex;
-  gap: 20px;
-  margin-top: 8px;
-}
-
-.quickControls .controlGroup {
-  display: flex;
-  gap: 8px;
-}
-
-.quickControls button {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 8px;
-  background: #f3f4f6;
-  color: #666;
-  font-size: 18px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.quickControls button:hover {
-  background: #e5e7eb;
-  color: #3b82f6;
-}
-
-/* 移动端适配 */
-@media (max-width: 768px) {
+/* 移动端样式优化 */
+@media (max-width: 480px) {
   .editor {
-    padding: 12px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    max-width: 100%;
+    border-radius: 12px 12px 0 0;
+    max-height: 100vh;
+    height: auto;
+  }
+
+  .content {
+    max-height: calc(100vh - 120px);
   }
 
   .imageContainer {
-    max-width: calc(100vh * 3/4 * 0.8);
+    max-width: calc(100vw - 32px);
+    padding-top: 100%; /* 1:1比例 */
   }
 
   .controls {
-    padding: 12px;
+    margin: 0 12px;
+    padding: 10px;
   }
 
-  .controlGroup label {
-    min-width: 36px;
-    font-size: 13px;
-  }
-
-  .controlGroup span {
-    min-width: 45px;
-    font-size: 13px;
+  .resetButton {
+    margin: 4px 12px;
   }
 
   .buttons {
-    padding: 12px;
+    padding: 10px 12px;
   }
 
-  .buttons button {
-    padding: 10px 20px;
-    font-size: 13px;
+  .confirm, .cancel {
+    flex: 1;
   }
 }
 
-/* 横屏模式适配 */
-@media (orientation: landscape) and (max-width: 896px) {
+/* 安全区域适配 */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
   .editor {
-    max-height: 80vh;
-    right: 20px;
-    left: auto;
-    width: 320px;
-    border-radius: 16px;
-    bottom: 20px;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .buttons {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+}
+
+/* 深色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .editor {
+    background: #1a1a1a;
+    border-color: rgba(255, 255, 255, 0.1);
   }
 
-  .imageContainer {
-    max-width: calc(80vh * 3/4);
+  .header {
+    background: rgba(26, 26, 26, 0.95);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .title {
+    color: #fff;
+  }
+
+  .closeButton {
+    color: #999;
+  }
+
+  .closeButton:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+
+  .controls {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .controlGroup label,
+  .value {
+    color: #999;
+  }
+
+  .slider {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .slider::-webkit-slider-thumb {
+    background: #6366f1;
+    border-color: #1a1a1a;
+  }
+
+  .resetButton {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #999;
+  }
+
+  .resetButton:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+
+  .buttons {
+    background: rgba(26, 26, 26, 0.95);
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .cancel {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #999;
+  }
+
+  .cancel:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+}
+
+/* 动画 */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* 滚动条美化 */
+.editor::-webkit-scrollbar {
+  width: 4px;
+}
+
+.editor::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.editor::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .editor::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
   }
 }

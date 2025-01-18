@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "axios": "^1.7.9",
+    "buffer": "^6.0.3",
     "cos-js-sdk-v5": "^1.8.7",
     "cos-nodejs-sdk-v5": "^2.14.6",
     "cropperjs": "^1.6.2",
@@ -19,10 +20,13 @@
     "framer-motion": "^11.17.0",
     "konva": "^9.3.18",
     "next": "14.0.4",
+    "process": "^0.11.10",
     "qcloud-cos-sts": "^3.1.1",
-    "react": "18.2.0",
+    "react": "^19.0.0",
     "react-device-detect": "2.2.3",
-    "react-dom": "18.2.0",
+    "react-dom": "^19.0.0",
+    "react-konva": "^19.0.2",
+    "react-moveable": "^0.56.0",
     "uuid": "^11.0.5",
     "xml2js": "^0.6.2"
   },
@@ -30,7 +34,8 @@
     "@types/node": "20.10.6",
     "@types/react": "18.2.46",
     "eslint": "8.56.0",
-    "eslint-config-next": "14.0.4"
+    "eslint-config-next": "14.0.4",
+    "typescript": "5.7.3"
   },
   "engines": {
     "node": ">=18.17.0"

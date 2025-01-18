@@ -1,19 +1,55 @@
 import { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import styles from '../styles/modules/components/image-editor.module.css';
 
-const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel }) => {
+const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel, initialTransform }) => {
   const targetRef = useRef(null);
-  const [transform, setTransform] = useState({
+  const containerRef = useRef(null);
+  const [transform, setTransform] = useState(initialTransform || {
     rotate: 0,
     scale: 1,
     translateX: 0,
     translateY: 0
   });
 
+  // 当初始变换值改变时更新状态
+  useEffect(() => {
+    if (initialTransform) {
+      setTransform(initialTransform);
+    }
+  }, [initialTransform]);
+
   // 更新变换状态
   const updateTransform = () => {
-    if (targetRef.current) {
-      targetRef.current.style.transform = `translate(${transform.translateX}px, ${transform.translateY}px) rotate(${transform.rotate}deg) scale(${transform.scale})`;
+    if (targetRef.current && containerRef.current) {
+      const container = containerRef.current;
+      const img = targetRef.current;
+      const imgElement = img.querySelector('img');
+
+      // 获取容器尺寸
+      const containerRect = container.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const containerHeight = containerRect.height;
+
+      // 计算中心点
+      const centerX = containerWidth / 2;
+      const centerY = containerHeight / 2;
+
+      // 计算图片实际尺寸
+      const imgWidth = imgElement.offsetWidth * transform.scale;
+      const imgHeight = imgElement.offsetHeight * transform.scale;
+
+      // 计算图片中心点
+      const imgCenterX = centerX + transform.translateX;
+      const imgCenterY = centerY + transform.translateY;
+
+      // 应用变换，以图片中心为基准点
+      img.style.transform = `
+        translate(${imgCenterX}px, ${imgCenterY}px)
+        translate(-50%, -50%)
+        rotate(${transform.rotate}deg)
+        scale(${transform.scale})
+      `;
     }
   };
 
@@ -21,6 +57,24 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel }) => {
   useEffect(() => {
     updateTransform();
   }, [transform]);
+
+  // 当容器大小改变时更新变换
+  useEffect(() => {
+    const resizeObserver = new ResizeObserver(() => {
+      updateTransform();
+    });
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // 当图片加载完成时更新变换
+  const handleImageLoad = () => {
+    updateTransform();
+  };
 
   // 处理旋转变化
   const handleRotateChange = (e) => {
@@ -59,7 +113,12 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel }) => {
   };
 
   return (
-    <div className={styles.editor}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className={styles.editor}
+    >
       <div className={styles.header}>
         <div className={styles.title}>编辑图层</div>
         <button className={styles.closeButton} onClick={onCancel}>×</button>
@@ -69,37 +128,59 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel }) => {
         <div 
           className={styles.imageContainer}
           style={{
-            aspectRatio: '3/4',
             width: '100%',
-            maxWidth: '500px',
+            maxWidth: '360px',
             margin: '0 auto',
-            background: '#f5f5f5',
-            borderRadius: '8px',
-            overflow: 'hidden'
+            background: 'rgba(0, 0, 0, 0.03)',
+            borderRadius: '10px',
+            overflow: 'hidden',
+            position: 'relative',
+            paddingTop: '133.33%', // 3:4 比例
+            border: '1px solid rgba(0, 0, 0, 0.1)',
+            boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.1)'
           }}
         >
           <div 
-            ref={targetRef} 
-            className={styles.imageTarget}
+            ref={containerRef}
             style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
               width: '100%',
               height: '100%',
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
+              overflow: 'hidden'
             }}
           >
-            <img 
-              src={layer.src} 
-              alt={layer.name}
+            <div 
+              ref={targetRef} 
+              className={styles.imageTarget}
               style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                pointerEvents: 'none'
+                position: 'absolute',
+                transformOrigin: '50% 50%',
+                willChange: 'transform'
               }}
-            />
+            >
+              <img 
+                src={layer.src} 
+                alt={layer.name}
+                style={{
+                  display: 'block',
+                  width: 'auto',
+                  height: 'auto',
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  objectFit: 'contain',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                  filter: 'drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1))',
+                  transformOrigin: '50% 50%'
+                }}
+                onLoad={handleImageLoad}
+                onClick={(e) => e.stopPropagation()}
+                onDragStart={(e) => e.preventDefault()}
+              />
+            </div>
           </div>
         </div>
 
@@ -115,7 +196,7 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel }) => {
               onChange={handleRotateChange}
               className={styles.slider}
             />
-            <span>{Math.round(transform.rotate)}°</span>
+            <span className={styles.value}>{Math.round(transform.rotate)}°</span>
           </div>
 
           <div className={styles.controlGroup}>
@@ -129,7 +210,7 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel }) => {
               onChange={handleScaleChange}
               className={styles.slider}
             />
-            <span>{(transform.scale * 100).toFixed(0)}%</span>
+            <span className={styles.value}>{(transform.scale * 100).toFixed(0)}%</span>
           </div>
 
           <div className={styles.controlGroup}>
@@ -161,7 +242,7 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel }) => {
           取消
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

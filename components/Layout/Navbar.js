@@ -18,7 +18,6 @@ export default function Navbar() {
               alt="YNN Logo"
               width={86}
               height={29}
-              priority
               style={{ objectFit: 'contain' }}
             />
           </div>
