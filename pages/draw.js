@@ -5,6 +5,7 @@ import AIPortraitModal from '../components/AIPortraitModal';
 import ArchiveModal from '../components/ArchiveModal';
 import ImageEditor from '../components/ImageEditor';
 import SlotSelector from '../services/slotService/SlotSelector'; // 修正导入路径
+import EditHint from '../components/EditHint'; // 导入EditHint组件
 
 export default function Draw() {
   const canvasRef = useRef(null);
@@ -24,11 +25,13 @@ export default function Draw() {
   const [showAIPortraitModal, setShowAIPortraitModal] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showButtons, setShowButtons] = useState(false);
+  const [showEditHint, setShowEditHint] = useState(false); // 添加编辑提示状态
 
   // 新增编辑模式相关状态
   const [editMode, setEditMode] = useState(false);
   const [editingLayer, setEditingLayer] = useState(null);
   const [layerTransforms, setLayerTransforms] = useState({});
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false); // 新增编辑弹窗状态
 
   // 计算画布尺寸
   const calculateDimensions = () => {
@@ -193,20 +196,32 @@ export default function Draw() {
         ctx.drawImage(img, x, y, targetWidth, targetHeight);
         
         setHasImage(true);
+        setShowEditHint(true); // 显示编辑提示
 
-        // 添加为第一个图层
         const newLayer = {
           id: Date.now(),
           name: file.name,
           src: e.target?.result || '',
           visible: true,
           width: img.width,
-          height: img.height
+          height: img.height,
+          order: 1 // 添加order属性，新图层始终为1号
         };
-        setLayers([newLayer]);
-        setLayerPositions({
-          [newLayer.id]: { x: 0, y: 0 }
+        // 更新其他图层的order
+        setLayers(prevLayers => {
+          const updatedLayers = prevLayers.map(layer => ({
+            ...layer,
+            order: layer.order + 1
+          }));
+          return [newLayer, ...updatedLayers];
         });
+        // 设置新图层位置
+        setLayerPositions(prev => ({
+          ...prev,
+          [newLayer.id]: { x: 0, y: 0 }
+        }));
+        // 自动选中新图层
+        setSelectedLayer(newLayer.id);
       };
       img.src = e.target?.result || '';
     };
@@ -365,13 +380,24 @@ export default function Draw() {
           src: e.target?.result || '',
           visible: true,
           width: img.width,
-          height: img.height
+          height: img.height,
+          order: 1 // 添加order属性，新图层始终为1号
         };
-        setLayers(prevLayers => [newLayer, ...prevLayers]);
+        // 更新其他图层的order
+        setLayers(prevLayers => {
+          const updatedLayers = prevLayers.map(layer => ({
+            ...layer,
+            order: layer.order + 1
+          }));
+          return [newLayer, ...updatedLayers];
+        });
+        // 设置新图层位置
         setLayerPositions(prev => ({
           ...prev,
           [newLayer.id]: { x: 0, y: 0 }
         }));
+        // 自动选中新图层
+        setSelectedLayer(newLayer.id);
       };
       img.src = e.target?.result || '';
     };
@@ -381,17 +407,37 @@ export default function Draw() {
   // 处理图层上移
   const handleMoveUp = (index) => {
     if (index === 0) return;
-    const newLayers = [...layers];
-    [newLayers[index], newLayers[index - 1]] = [newLayers[index - 1], newLayers[index]];
-    setLayers(newLayers);
+    setLayers(prevLayers => {
+      const newLayers = [...prevLayers];
+      const currentLayer = newLayers[index];
+      const upperLayer = newLayers[index - 1];
+      
+      // 交换order值
+      const tempOrder = currentLayer.order;
+      currentLayer.order = upperLayer.order;
+      upperLayer.order = tempOrder;
+      
+      // 根据order排序
+      return newLayers.sort((a, b) => a.order - b.order);
+    });
   };
 
   // 处理图层下移
   const handleMoveDown = (index) => {
     if (index === layers.length - 1) return;
-    const newLayers = [...layers];
-    [newLayers[index], newLayers[index + 1]] = [newLayers[index + 1], newLayers[index]];
-    setLayers(newLayers);
+    setLayers(prevLayers => {
+      const newLayers = [...prevLayers];
+      const currentLayer = newLayers[index];
+      const lowerLayer = newLayers[index + 1];
+      
+      // 交换order值
+      const tempOrder = currentLayer.order;
+      currentLayer.order = lowerLayer.order;
+      lowerLayer.order = tempOrder;
+      
+      // 根据order排序
+      return newLayers.sort((a, b) => a.order - b.order);
+    });
   };
 
   // 处理图层可见性切换
@@ -408,32 +454,97 @@ export default function Draw() {
   // 处理图层选择
   const handleLayerSelect = (layerId, e) => {
     e?.stopPropagation();
-    if (editMode) return; // 编辑模式下不允许切换选中层
-    setSelectedLayer(layerId === selectedLayer ? null : layerId);
+    
+    // 如果在编辑模式且选中的不是当前编辑的图层，不允许切换
+    if (editMode && layerId !== editingLayer) {
+      return;
+    }
+    
+    // 如果点击的是当前选中的图层，并且不在编辑模式，则取消选中
+    if (layerId === selectedLayer && !editMode) {
+      setSelectedLayer(null);
+      return;
+    }
+    
+    // 选中新图层
+    setSelectedLayer(layerId);
+    
+    // 如果该图层不可见，则设为可见
+    setLayers(prevLayers =>
+      prevLayers.map(layer =>
+        layer.id === layerId
+          ? { ...layer, visible: true }
+          : layer
+      )
+    );
   };
 
   // 进入编辑模式
   const handleEditLayer = (layerId) => {
-    if (editMode) return;
+    // 如果图层面板打开，不进入编辑模式
+    if (showLayers) return;
+
     setEditMode(true);
     setEditingLayer(layerId);
     
-    // 保持现有的变换值，如果没有则使用默认值
-    const currentTransform = layerTransforms[layerId] || { 
-      rotation: 0, 
+    // 获取当前变换值
+    const currentTransform = layerTransforms[layerId] || {
+      rotation: 0,
       scale: 1,
-      translateX: layerPositions[layerId]?.x || 0,
-      translateY: layerPositions[layerId]?.y || 0
+      translateX: 0,
+      translateY: 0
     };
     
-    // 不重置变换值，保持当前状态
+    // 更新变换值，保持当前状态
     setLayerTransforms(prev => ({
       ...prev,
       [layerId]: {
-        ...prev[layerId],
-        ...currentTransform
+        ...currentTransform,
+        previousState: { ...currentTransform } // 保存编辑前的状态，用于取消编辑
       }
     }));
+    setIsEditModalOpen(true); // 打开编辑弹窗
+  };
+
+  // 退出编辑模式
+  const handleEditComplete = (save = true) => {
+    if (!editMode || !editingLayer) return;
+    
+    if (save) {
+      // 保存当前变换状态
+      const currentTransform = layerTransforms[editingLayer];
+      setLayerTransforms(prev => ({
+        ...prev,
+        [editingLayer]: {
+          rotation: currentTransform.rotation,
+          scale: currentTransform.scale,
+          translateX: layerPositions[editingLayer]?.x || 0,
+          translateY: layerPositions[editingLayer]?.y || 0
+        }
+      }));
+    } else {
+      // 取消编辑，恢复之前的状态
+      const previousState = layerTransforms[editingLayer]?.previousState;
+      if (previousState) {
+        setLayerTransforms(prev => ({
+          ...prev,
+          [editingLayer]: { ...previousState }
+        }));
+        setLayerPositions(prev => ({
+          ...prev,
+          [editingLayer]: {
+            x: previousState.translateX,
+            y: previousState.translateY
+          }
+        }));
+      }
+    }
+    
+    setEditMode(false);
+    setEditingLayer(null);
+    setIsEditModalOpen(false); // 关闭编辑弹窗
+    // 退出编辑模式后再显示图层面板
+    setShowLayers(true);
   };
 
   // 处理旋转变化
@@ -461,16 +572,21 @@ export default function Draw() {
   };
 
   // 处理变换更新
-  const handleTransformChange = (transform) => {
+  const handleTransformChange = ({ type, value }) => {
     if (!editingLayer) return;
-    
-    switch (transform.type) {
+
+    if (type === 'erase' || type === 'matting') {
+      return; // 不再直接更新，等待确认
+    }
+
+    // 处理其他变换类型...
+    switch (type) {
       case 'rotate':
         setLayerTransforms(prev => ({
           ...prev,
           [editingLayer]: {
             ...prev[editingLayer],
-            rotation: transform.value
+            rotation: value
           }
         }));
         break;
@@ -480,7 +596,7 @@ export default function Draw() {
           ...prev,
           [editingLayer]: {
             ...prev[editingLayer],
-            scale: transform.value
+            scale: value
           }
         }));
         break;
@@ -489,8 +605,8 @@ export default function Draw() {
         setLayerPositions(prev => ({
           ...prev,
           [editingLayer]: {
-            x: transform.value.x,
-            y: transform.value.y
+            x: value.x,
+            y: value.y
           }
         }));
         break;
@@ -518,36 +634,50 @@ export default function Draw() {
   const handleConfirmEdit = (transform) => {
     if (!editingLayer) return;
 
-    // 更新变换，保持现有的状态
-    setLayerTransforms(prev => ({
-      ...prev,
-      [editingLayer]: {
-        ...prev[editingLayer],
-        rotation: transform.rotate,
-        scale: transform.scale,
-        translateX: transform.translateX,
-        translateY: transform.translateY
-      }
-    }));
+    if (transform?.type === 'erase' || transform?.type === 'matting') {
+      // 更新图层的图像数据并立即重新渲染画布
+      setLayers(prevLayers => {
+        const newLayers = prevLayers.map(layer =>
+          layer.id === editingLayer
+            ? { ...layer, src: transform.value }
+            : layer
+        );
+        // 在状态更新完成后立即重新渲染
+        requestAnimationFrame(() => {
+          updateCanvas();
+        });
+        return newLayers;
+      });
 
-    // 更新位置
-    setLayerPositions(prev => ({
-      ...prev,
-      [editingLayer]: {
-        x: transform.translateX,
-        y: transform.translateY
-      }
-    }));
+      // 关闭弹窗
+      setIsEditModalOpen(false);
+      return;
+    }
 
-    // 退出编辑模式
-    setEditMode(false);
-    setEditingLayer(null);
-    setSelectedLayer(null); // 清除选中状态
+    // 更新其他变换
+    if (transform?.rotate !== undefined) {
+      setLayerTransforms(prev => ({
+        ...prev,
+        [editingLayer]: {
+          ...prev[editingLayer],
+          rotation: transform.rotate,
+          scale: transform.scale || 1
+        }
+      }));
+    }
 
-    // 重新渲染画布
-    requestAnimationFrame(() => {
-      updateCanvas();
-    });
+    if (transform?.translateX !== undefined && transform?.translateY !== undefined) {
+      setLayerPositions(prev => ({
+        ...prev,
+        [editingLayer]: {
+          x: transform.translateX,
+          y: transform.translateY
+        }
+      }));
+    }
+
+    // 关闭弹窗
+    setIsEditModalOpen(false);
   };
 
   // 取消编辑
@@ -571,7 +701,9 @@ export default function Draw() {
     // 退出编辑模式
     setEditMode(false);
     setEditingLayer(null);
-    setSelectedLayer(null); // 清除选中状态
+    setIsEditModalOpen(false); // 关闭编辑弹窗
+    // 模拟点击图层按钮
+    setShowLayers(true);
 
     // 重新渲染画布
     requestAnimationFrame(() => {
@@ -591,8 +723,11 @@ export default function Draw() {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // 按order属性排序图层，order小的在上面（后绘制）
+    const sortedLayers = [...layers].sort((a, b) => b.order - a.order);
+
     // 按顺序绘制所有可见图层
-    layers.forEach(layer => {
+    sortedLayers.forEach(layer => {
       if (!layer.visible) return;
 
       const img = new Image();
@@ -612,7 +747,7 @@ export default function Draw() {
       ctx.translate(-canvas.width / 2, -canvas.height / 2);
 
       // 绘制图像
-      const imageRatio = img.width / img.height;
+      const imageRatio = layer.width / layer.height;
       let targetWidth, targetHeight, x, y;
 
       if (imageRatio === 1) {
@@ -661,12 +796,16 @@ export default function Draw() {
     // 获取点击的图层
     const clickedLayerId = getClickedLayer(x, y);
     
+    // 如果图层面板打开，只允许拖动，不进入编辑模式
     if (clickedLayerId) {
       setSelectedLayer(clickedLayerId);
-      setIsDraggingImage(true);
-      setDragStart({ x, y });
-      setInitialPosition({ x, y });
-      setMoveDistance(0);
+      // 只有在图层面板关闭时才设置拖动状态
+      if (!showLayers) {
+        setIsDraggingImage(true);
+        setDragStart({ x, y });
+        setInitialPosition({ x, y });
+        setMoveDistance(0);
+      }
     } else {
       setSelectedLayer(null);
       if (editMode) {
@@ -709,8 +848,11 @@ export default function Draw() {
   // 处理画布鼠标松开
   const handleCanvasMouseUp = () => {
     if (isDraggingImage && selectedLayer && moveDistance < moveThreshold) {
-      // 如果移动距离小于阈值，视为点击，进入编辑模式
-      handleEditLayer(selectedLayer);
+      // 如果图层面板打开，不触发编辑模式
+      if (!showLayers) {
+        // 如果移动距离小于阈值，视为点击，进入编辑模式
+        handleEditLayer(selectedLayer);
+      }
     }
     setIsDraggingImage(false);
     setMoveDistance(0);
@@ -729,11 +871,18 @@ export default function Draw() {
     // 获取触摸的图层
     const clickedLayerId = getClickedLayer(x, y);
     if (clickedLayerId) {
+      // 如果当前正在编辑，不进行新的选择
+      if (editMode) return;
+      
       setSelectedLayer(clickedLayerId);
       setIsDraggingImage(true);
       setDragStart({ x, y });
       setInitialPosition({ x, y });
       setMoveDistance(0);
+      
+      // 防止触发其他点击事件
+      e.preventDefault();
+      e.stopPropagation();
     } else {
       setSelectedLayer(null);
       if (editMode) {
@@ -745,6 +894,8 @@ export default function Draw() {
   // 处理画布触摸移动
   const handleCanvasTouchMove = useCallback((e) => {
     if (!isDraggingImage || editMode) return;
+    
+    // 防止页面滚动
     e.preventDefault();
     
     const canvas = canvasRef.current;
@@ -776,10 +927,16 @@ export default function Draw() {
   }, [isDraggingImage, selectedLayer, dragStart, initialPosition, editMode]);
 
   // 处理画布触摸结束
-  const handleCanvasTouchEnd = () => {
+  const handleCanvasTouchEnd = (e) => {
     if (isDraggingImage && selectedLayer && moveDistance < moveThreshold) {
-      // 如果移动距离小于阈值，视为点击，进入编辑模式
-      handleEditLayer(selectedLayer);
+      // 如果图层面板打开或正在编辑中，不触发编辑模式
+      if (!showLayers && !editMode) {
+        // 如果移动距离小于阈值，视为点击，进入编辑模式
+        handleEditLayer(selectedLayer);
+        // 防止触发其他点击事件
+        e.preventDefault();
+        e.stopPropagation();
+      }
     }
     setIsDraggingImage(false);
     setMoveDistance(0);
@@ -841,52 +998,67 @@ export default function Draw() {
     if (!canvas) return null;
 
     const dpr = window.devicePixelRatio || 1;
-    // 从上到下遍历图层（从前到后）
-    for (const layer of layers) {
+    // 按order属性排序图层，从上到下遍历（order小的在上面）
+    const sortedLayers = [...layers].sort((a, b) => a.order - b.order);
+    
+    for (const layer of sortedLayers) {
       if (!layer.visible) continue;
 
-      const img = new Image();
-      img.src = layer.src;
-      
-      // 计算图片在画布中的实际位置和大小
-      const imageRatio = img.width / img.height;
-      let targetWidth, targetHeight, x, y;
+      // 使用图层自身的宽高比
+      const imageRatio = layer.width / layer.height;
+      let targetWidth, targetHeight, imgX, imgY;
 
+      // 计算图片实际显示尺寸和位置
       if (imageRatio === 1) {
-        const size = Math.min(canvas.width, canvas.height);
-        targetWidth = size / dpr;
-        targetHeight = size / dpr;
-        x = (canvas.width / dpr - targetWidth) / 2;
-        y = (canvas.height / dpr - targetHeight) / 2;
+        const size = Math.min(canvas.width, canvas.height) / dpr;
+        targetWidth = size;
+        targetHeight = size;
+        imgX = (canvas.width / dpr - size) / 2;
+        imgY = (canvas.height / dpr - size) / 2;
       } else if (imageRatio > 1) {
         targetWidth = canvas.width / dpr;
         targetHeight = (canvas.width / dpr) / imageRatio;
-        x = 0;
-        y = (canvas.height / dpr - targetHeight) / 2;
+        imgX = 0;
+        imgY = (canvas.height / dpr - targetHeight) / 2;
       } else {
         targetHeight = canvas.height / dpr;
         targetWidth = (canvas.height / dpr) * imageRatio;
-        x = (canvas.width / dpr - targetWidth) / 2;
-        y = 0;
+        imgX = (canvas.width / dpr - targetWidth) / 2;
+        imgY = 0;
       }
 
-      // 应用图层位置偏移
+      // 应用图层变换
+      const transform = layerTransforms[layer.id] || { rotation: 0, scale: 1 };
       const position = layerPositions[layer.id] || { x: 0, y: 0 };
-      x += position.x;
-      y += position.y;
 
-      // 检查点击位置是否在图片范围内
-      if (isPointInImage(x, y, {
-        left: x,
-        top: y,
-        width: targetWidth,
-        height: targetHeight
-      })) {
+      // 计算变换后的中心点
+      const centerX = imgX + targetWidth / 2 + position.x;
+      const centerY = imgY + targetHeight / 2 + position.y;
+
+      // 将点击坐标转换到图层坐标系
+      const dx = x - centerX;
+      const dy = y - centerY;
+
+      // 应用旋转变换的逆变换
+      const angle = -transform.rotation * Math.PI / 180;
+      const rotatedX = dx * Math.cos(angle) - dy * Math.sin(angle);
+      const rotatedY = dx * Math.sin(angle) + dy * Math.cos(angle);
+
+      // 应用缩放变换的逆变换
+      const scaledX = rotatedX / transform.scale;
+      const scaledY = rotatedY / transform.scale;
+
+      // 检查点是否在图层范围内
+      const halfWidth = targetWidth / 2;
+      const halfHeight = targetHeight / 2;
+      
+      if (scaledX >= -halfWidth && scaledX <= halfWidth && 
+          scaledY >= -halfHeight && scaledY <= halfHeight) {
         return layer.id;
       }
     }
     return null;
-  }, [layers, layerPositions, isPointInImage]);
+  }, [layers, layerPositions, layerTransforms]);
 
   // 处理画布鼠标离开
   const handleCanvasMouseLeave = useCallback(() => {
@@ -981,7 +1153,7 @@ export default function Draw() {
 
   // 处理关闭弹窗
   const handleCloseEditModal = () => {
-    // 移除编辑模式相关状态
+    setIsEditModalOpen(false); // 关闭编辑弹窗
   };
 
   // 处理编辑后的图片更新
@@ -1115,6 +1287,34 @@ export default function Draw() {
     }
   }, [hasImage]);
 
+  // 下载画布内容
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const handleDownloadCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // 获取当前时间并格式化
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+    // 创建下载链接
+    const link = document.createElement('a');
+    link.download = `YnnAI-${timestamp}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
+
   return (
     <Layout>
       <div 
@@ -1160,13 +1360,9 @@ export default function Draw() {
                 }}
               >
                 <img
-                  src={layer.src}
+                  src={layer.src} 
                   alt={`图层 ${index + 1}`}
-                  style={{
-                    width: layer.width,
-                    height: layer.height,
-                    pointerEvents: 'none'
-                  }}
+                  className="layer-preview" 
                   draggable={false}
                 />
               </div>
@@ -1180,170 +1376,201 @@ export default function Draw() {
             style={{ display: 'none' }}
           />
           
+          {/* 在画布容器内添加EditHint */}
+          {showEditHint && hasImage && (
+            <EditHint 
+              onHintClick={() => {
+                setShowEditHint(false);
+                if (selectedLayer) {
+                  setEditMode(true);
+                  setEditingLayer(selectedLayer);
+                  setIsEditModalOpen(true);
+                }
+              }}
+            />
+          )}
           {/* 图层按钮 */}
-          <div className="layers-container">
+          {hasImage && (
             <motion.button
-              className="canvas-layers"
+              className="tool-button"
               onClick={() => setShowLayers(!showLayers)}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               title="图层管理"
+              style={{
+                position: 'absolute',
+                top: '1.2rem',
+                left: '1.2rem',
+                zIndex: 50,
+                padding: '0.5rem',
+                background: 'rgba(255, 255, 255, 0.9)',
+                borderRadius: '6px',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+                border: '1px solid rgba(0, 0, 0, 0.08)',
+                backdropFilter: 'blur(8px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#1a1a1a',
+                transition: 'all 0.2s ease'
+              }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                <path d="M2 17l10 5 10-5"/>
-                <path d="M2 12l10 5 10-5"/>
+              <svg className="button-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round"/>
+                <circle cx="2" cy="6" r="1" fill="currentColor"/>
+                <circle cx="2" cy="12" r="1" fill="currentColor"/>
+                <circle cx="2" cy="18" r="1" fill="currentColor"/>
               </svg>
-              <span className="layer-count">{layers.length}</span>
             </motion.button>
-
-            {/* 最小化状态的图层列表 */}
-            {!showLayers && layers.length > 0 && (
-              <motion.div
-                className="layers-mini"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3 }}
-              >
+          )}
+          {/* 图层面板 */}
+          {hasImage && showLayers && (
+            <motion.div
+              className="layers-panel"
+              initial={{ opacity: 0, scale: 0.95, x: -20 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              transition={{ duration: 0.3 }}
+              style={{
+                position: 'absolute',
+                top: '3.5rem',
+                left: '1.2rem',
+                zIndex: 49
+              }}
+            >
+              <div className="layers-list">
                 {layers.map((layer, index) => (
                   <motion.div
                     key={layer.id}
-                    className={`layer-mini-item ${layer.visible ? 'visible' : ''} ${selectedLayer === layer.id ? 'selected' : ''}`}
+                    className={`layer-item ${layer.visible ? 'visible' : ''} ${selectedLayer === layer.id ? 'selected' : ''}`}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.05 }}
-                    onClick={(e) => handleLayerSelect(layer.id, e)}
                   >
-                    <img src={layer.src} alt={layer.name} className="layer-mini-preview" draggable={false} />
-                    <span className="layer-mini-index">{index + 1}</span>
+                    <div 
+                      className={`layer-preview-container ${selectedLayer === layer.id ? 'selected' : ''}`}
+                      onClick={(e) => handleLayerSelect(layer.id, e)}
+                    >
+                      <img 
+                        src={layer.src} 
+                        alt={`图层 ${index + 1}`}
+                        className="layer-preview" 
+                        draggable={false}
+                      />
+                      <span className="layer-index">{index + 1}</span>
+                    </div>
+                    
+                    <div className="layer-controls">
+                      <button
+                        className={`layer-visibility ${layer.visible ? 'visible' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLayerVisibility(layer.id);
+                        }}
+                        title={layer.visible ? "隐藏图层" : "显示图层"}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M2 12s4-5 10-5 10 5 10 5-4 5-10 5-10-5-10-5z" strokeLinecap="round"/>
+                          <circle cx="12" cy="12" r="3" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                      <button
+                        className="layer-move-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveUp(index);
+                        }}
+                        disabled={index === 0}
+                        title="上移图层"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M17 8l-5-5-5 5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M12 16V4" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                      <button
+                        className="layer-move-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveDown(index);
+                        }}
+                        disabled={index === layers.length - 1}
+                        title="下移图层"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M17 16l-5 5-5-5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M12 8v12" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                      <button
+                        className="layer-delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteLayer(layer.id);
+                        }}
+                        title="删除图层"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M18 6L6 18" strokeLinecap="round"/>
+                          <path d="M6 6l12 12" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    </div>
                   </motion.div>
                 ))}
-              </motion.div>
-            )}
+              </div>
 
-            {/* 展开状态的图层面板 */}
-            {showLayers && (
-              <motion.div
-                className="layers-panel"
-                initial={{ opacity: 0, scale: 0.95, x: -20 }}
-                animate={{ opacity: 1, scale: 1, x: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="layers-list">
-                  {layers.map((layer, index) => (
-                    <motion.div
-                      key={layer.id}
-                      className={`layer-item ${layer.visible ? 'visible' : ''} ${selectedLayer === layer.id ? 'selected' : ''}`}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.2, delay: index * 0.05 }}
-                    >
-                      <div 
-                        className={`layer-preview-container ${selectedLayer === layer.id ? 'selected' : ''}`}
-                        onClick={(e) => handleLayerSelect(layer.id, e)}
-                      >
-                        <img 
-                          src={layer.src} 
-                          alt={`图层 ${index + 1}`}
-                          className="layer-preview" 
-                          draggable={false}
-                        />
-                        <span className="layer-index">{index + 1}</span>
-                      </div>
-                      
-                      <div className="layer-controls">
-                        <button
-                          className={`layer-visibility ${layer.visible ? 'visible' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleLayerVisibility(layer.id);
-                          }}
-                          title={layer.visible ? "隐藏图层" : "显示图层"}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                            <path d="M12 6v12"/>
-                            <path d="M6 12h12"/>
-                          </svg>
-                        </button>
-                        <button
-                          className="layer-move-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMoveUp(index);
-                          }}
-                          disabled={index === 0}
-                          title="上移图层"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M12 19V5M12 19H5M22 19h-2M19.07 4.93l-1.41 1.41M6.34 17.66l-1.41 1.41M19.07 19.07l-1.41-1.41M6.34 6.34L4.93 4.93" />
-                          </svg>
-                        </button>
-                        <button
-                          className="layer-move-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMoveDown(index);
-                          }}
-                          disabled={index === layers.length - 1}
-                          title="下移图层"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M7 7h10v10H7z"/>
-                            <path d="M19 7v10H5V7"/>
-                          </svg>
-                        </button>
-                        <button
-                          className="layer-delete-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteLayer(layer.id);
-                          }}
-                          title="删除图层"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M3 6h18"/>
-                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-                          </svg>
-                        </button>
-                        <button
-                          className="layer-edit-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditLayer(layer.id);
-                          }}
-                          title="编辑图层"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M15.2328 2.23284C15.9833 1.48284 16.9833 1.01584 18.0158 1.01584C20.0158 1.01584 21.5158 2.51584 21.5158 4.51584V21.5158C21.5158 23.5158 20.5158 24.5158 18.5158 24.5158H5.48421C3.48421 24.5158 2.48421 23.5158 2.48421 21.5158V4.51584C2.48421 2.51584 3.48421 1.51584 4.48421 1.01584C5.98421 1.01584 7.0158 1.48284 8.76785 2.23284L12 5.66421L15.2328 2.23284Z"/>
-                          </svg>
-                        </button>
-                      </div>
-                    </motion.div>
-                  ))}
+              {layers.length < 5 && (
+                <div className="layers-footer">
+                  <motion.button
+                    className="layer-add-btn"
+                    onClick={handleLayerUpload}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    title="添加图层"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" strokeLinecap="round"/>
+                      <path d="M12 8v8" strokeLinecap="round"/>
+                      <path d="M8 12h8" strokeLinecap="round"/>
+                    </svg>
+                  </motion.button>
                 </div>
-
-                {layers.length < 5 && (
-                  <div className="layers-footer">
-                    <motion.button
-                      className="layer-add-btn"
-                      onClick={handleLayerUpload}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      title="添加图层"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="12" y1="5" x2="12" y2="19"/>
-                        <line x1="5" y1="12" x2="19" y2="12"/>
-                      </svg>
-                    </motion.button>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </div>
-
+              )}
+            </motion.div>
+          )}
+          {isClient && (
+            <motion.button
+              onClick={handleDownloadCanvas}
+              className="tool-button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              title="下载画布"
+              style={{
+                position: 'absolute',
+                top: '1.2rem',
+                right: '1.2rem',
+                zIndex: 50,
+                padding: '0.5rem',
+                background: 'rgba(255, 255, 255, 0.9)',
+                borderRadius: '6px',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
+                border: '1px solid rgba(0, 0, 0, 0.08)',
+                backdropFilter: 'blur(8px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#1a1a1a',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <svg className="button-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            </motion.button>
+          )}
+          
           <motion.div 
             className={`canvas-buttons ${showButtons ? 'visible' : ''}`}
             initial={{ opacity: 0, y: 20 }}
@@ -1414,7 +1641,7 @@ export default function Draw() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
                     <path d="M12 6v12"/>
                     <path d="M6 12h12"/>
@@ -1428,7 +1655,7 @@ export default function Draw() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M2 2h20v20H2z"/>
                     <path d="M7 7h10v10H7z"/>
                   </svg>
@@ -1441,7 +1668,7 @@ export default function Draw() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 8l-3-6H6L3 8v12h18V8z"/>
                     <path d="M3 8h18"/>
                     <path d="M15 8a3 3 0 0 0-6 0"/>
@@ -1455,7 +1682,7 @@ export default function Draw() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M5 12h14"/>
                     <path d="M12 5l7 7-7 7"/>
                   </svg>
@@ -1502,6 +1729,16 @@ export default function Draw() {
             </motion.div>
           )}
         </AnimatePresence>
+        {isEditModalOpen && (
+          <motion.div
+            className="edit-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            onClick={handleCloseEditModal}
+          />
+        )}
       </div>
     </Layout>
   );

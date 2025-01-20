@@ -3,8 +3,8 @@ import Logger from '@/utils/api/logger';
 
 // 初始化 COS 实例
 const cos = new COS({
-  SecretId: process.env.TENCENT_CLOUD_SECRET_ID,
-  SecretKey: process.env.TENCENT_CLOUD_SECRET_KEY
+  SecretId: process.env.NEXT_PUBLIC_TENCENT_CLOUD_SECRET_ID,
+  SecretKey: process.env.NEXT_PUBLIC_TENCENT_CLOUD_SECRET_KEY
 });
 
 // 添加一个验证函数检查图片是否成功上传
@@ -37,6 +37,14 @@ async function verifyUpload(params) {
   });
 }
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '30mb'
+    }
+  }
+};
+
 export default async function handler(req, res) {
   const logger = Logger.forRequest();
   
@@ -61,8 +69,8 @@ export default async function handler(req, res) {
     const processedKey = `matting_${timestamp}.png`;
 
     const uploadParams = {
-      Bucket: process.env.TENCENT_CLOUD_BUCKET,
-      Region: process.env.TENCENT_CLOUD_REGION,
+      Bucket: process.env.NEXT_PUBLIC_TENCENT_CLOUD_BUCKET,
+      Region: process.env.NEXT_PUBLIC_TENCENT_CLOUD_REGION,
       Key: originalKey,
       Body: Buffer.from(image_base64, 'base64'),
       Headers: {
@@ -118,13 +126,13 @@ export default async function handler(req, res) {
     }
 
     // 构建返回URL
-    const processedImageUrl = `https://${process.env.TENCENT_CLOUD_BUCKET_DOMAIN}/${processedKey}`;
+    const processedImageUrl = `https://${process.env.NEXT_PUBLIC_TENCENT_CLOUD_BUCKET_DOMAIN}/${processedKey}`;
     
     // 获取处理后的图片数据
     const processedImageData = await new Promise((resolve, reject) => {
       cos.getObject({
-        Bucket: process.env.TENCENT_CLOUD_BUCKET,
-        Region: process.env.TENCENT_CLOUD_REGION,
+        Bucket: process.env.NEXT_PUBLIC_TENCENT_CLOUD_BUCKET,
+        Region: process.env.NEXT_PUBLIC_TENCENT_CLOUD_REGION,
         Key: processedKey,
       }, (err, data) => {
         if (err) {

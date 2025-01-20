@@ -1,0 +1,14 @@
+.eraseControls {
+  width: 100%;
+}
+
+.typeButtons button:hover,
+.actionButtons button:hover {
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+
+.typeButtons button:active,
+.actionButtons button:active {
+  background: rgba(0, 0, 0, 0.05) !important;
+  transform: translateY(1px);
+}

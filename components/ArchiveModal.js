@@ -85,9 +85,10 @@ const ArchiveModal = ({ isOpen, onClose, onLoad }) => {
   }, [isOpen]); // 添加 isOpen 作为依赖
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {/* 主模态框 */}
       <motion.div
+        key="archive-modal"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -498,9 +499,10 @@ const ArchiveModal = ({ isOpen, onClose, onLoad }) => {
       </motion.div>
 
       {/* 图片预览模态框 */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {previewImage && (
           <motion.div
+            key="image-preview"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

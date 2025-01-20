@@ -1,4 +1,4 @@
-c// 处理槽位下载任务的 Worker
+// 处理槽位下载任务的 Worker
 let downloadInterval;
 let startTime;
 const DOWNLOAD_DURATION = 10 * 60 * 1000; // 10分钟
