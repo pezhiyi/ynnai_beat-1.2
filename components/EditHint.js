@@ -23,7 +23,7 @@ const EditHint = ({ onHintClick }) => {
   return (
     <div className={`${styles.editHint} ${styles.visible}`} onClick={handleClick}>
       <div className={styles.hintContent}>
-        点击图片进行编辑
+        点击激活图层编辑器
       </div>
     </div>
   );

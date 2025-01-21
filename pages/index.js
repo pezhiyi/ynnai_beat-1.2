@@ -3,11 +3,12 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Layout from '@/components/Layout/Layout';
 import LogoAnimation from '@/components/LogoAnimation';
+import { newsData } from './message.js';  
+import styles from '@/styles/modules/pages/message.module.css';  
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
 
-  // 示例商品数据
   const products = [
     { 
       id: 1, 
@@ -39,89 +40,7 @@ export default function Home() {
     },
   ];
 
-  // 示例信息流数据
-  const newsFeeds = [
-    { 
-      id: 1, 
-      title: '磁吸宠物手机壳新品上市', 
-      date: '2024-03-20',
-      desc: '支持iPhone 15/16全系列，MagSafe磁吸无线充电，镜面质感高清打印，完美展现爱宠形象，防摔保护',
-      image: '/images/news-phone-case.jpg',
-      link: '/products/phone-case'
-    },
-    { 
-      id: 2, 
-      title: '宠物油画肖像定制服务', 
-      date: '2024-03-19',
-      desc: '专业画师手绘，多种艺术风格可选，精细绘制爱宠形象，配套高档画框，为爱宠留下永恒艺术记忆',
-      image: '/images/news-portrait.jpg',
-      link: '/products/portrait'
-    },
-    { 
-      id: 3, 
-      title: '创意宠物抱枕新品发布', 
-      date: '2024-03-18',
-      desc: '不规则造型设计，双面高清印刷，柔软舒适可机洗，让爱宠陪伴在身边的温暖选择',
-      image: '/images/news-pillow.jpg',
-      link: '/products/pillow'
-    },
-    {
-      id: 4,
-      title: '宠物定制真丝绒地毯上新',
-      date: '2024-03-17',
-      desc: '高品质真丝绒面料，圆形艺术设计，防滑底部，可机洗，为家增添独特温馨氛围',
-      image: '/images/news-carpet.jpg',
-      link: '/products/carpet'
-    },
-    {
-      id: 5,
-      title: '新年宠物定制红包限量发售',
-      date: '2024-03-16',
-      desc: '精美烫金工艺，个性化宠物图案，新年送礼必备，让红包更有爱的温度',
-      image: '/images/news-envelope.jpg',
-      link: '/products/envelope'
-    },
-    {
-      id: 6,
-      title: '温暖宠物定制毛毯开售',
-      date: '2024-03-15',
-      desc: '超柔软亲肤面料，高清数码印刷，大尺寸设计，让爱宠陪你温暖每个夜晚',
-      image: '/images/news-blanket.jpg',
-      link: '/products/blanket'
-    },
-    {
-      id: 7,
-      title: '定制宠物印花服装系列',
-      date: '2024-03-14',
-      desc: '多款版型可选，优质面料舒适透气，将爱宠图案完美呈现在衣服上，展现独特时尚态度',
-      image: '/images/news-clothing.jpg',
-      link: '/products/clothing'
-    },
-    {
-      id: 8,
-      title: '创意宠物气囊支架首发',
-      date: '2024-03-13',
-      desc: '手工滴胶工艺，高透质感，磁吸式设计，让爱宠陪伴手机每一刻',
-      image: '/images/news-stand.jpg',
-      link: '/products/stand'
-    },
-    {
-      id: 9,
-      title: '星蝶公主风画像定制上线',
-      date: '2024-03-12',
-      desc: '独特星蝶公主艺术风格，专业画师手绘，为你的照片注入梦幻魔法',
-      image: '/images/news-butterfly.jpg',
-      link: '/products/butterfly'
-    },
-    {
-      id: 10,
-      title: 'Newmasus艺术画像定制',
-      date: '2024-03-11',
-      desc: '特色油画棒蜡笔风格，将照片转化为独特艺术形象，创造专属艺术记忆',
-      image: '/images/news-newmasus.jpg',
-      link: '/products/newmasus'
-    }
-  ];
+  const recentNews = newsData.slice(0, 5);
 
   useEffect(() => {
     setMounted(true);
@@ -173,14 +92,15 @@ export default function Home() {
               开始设计
             </motion.button>
           </Link>
-          <motion.button 
-            className="button secondary"
-            whileHover={{ scale: 1.05, backgroundColor: "rgba(124, 58, 237, 0.1)" }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
-          >
-            了解更多
-          </motion.button>
+          <Link href="/message">
+            <motion.button 
+              className="button secondary"
+              whileHover={{ scale: 1.05, backgroundColor: "rgba(124, 58, 237, 0.1)" }}
+              whileTap={{ scale: 0.95 }}
+            >
+              了解更多
+            </motion.button>
+          </Link>
         </motion.div>
 
         {/* 底部内容区域 */}
@@ -200,31 +120,43 @@ export default function Home() {
             >
               最新动态
             </motion.h2>
-            <div className="news-feed">
-              {newsFeeds.map((news, index) => (
-                <Link href={news.link} key={news.id}>
-                  <motion.div 
-                    className="news-item"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 1.6 + index * 0.1, duration: 0.6 }}
-                    whileHover={{ scale: 1.02, x: 5 }}
+            <div className={styles['news-feed']}>
+              {recentNews.map((news, index) => (
+                <Link href={`/news/${news.id}`} key={news.id}>
+                  <motion.article 
+                    className={styles.newsItem}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
                   >
-                    <div className="news-image" style={{ backgroundImage: `url(${news.image})` }} />
-                    <div className="news-content">
-                      <span className="news-date">{news.date}</span>
-                      <h3 className="news-title">{news.title}</h3>
-                      <p className="news-desc">{news.desc}</p>
+                    <div 
+                      className={styles.newsImage}
+                      style={{
+                        backgroundImage: `url(${news.image})`,
+                      }}
+                    />
+                    <div className={styles.newsContent}>
+                      <h3 className={styles.newsTitle}>{news.title}</h3>
+                      <p className={styles.newsDesc}>{news.desc}</p>
+                      <div className={styles.newsFooter}>
+                        <span className={styles.newsDate}>{news.date}</span>
+                        <span className={styles.newsCategory}>{news.category}</span>
+                      </div>
                     </div>
-                    <motion.div 
-                      className="news-arrow"
-                      whileHover={{ x: 5 }}
-                    >
-                      →
-                    </motion.div>
-                  </motion.div>
+                  </motion.article>
                 </Link>
               ))}
+            </div>
+            <div className="news-more">
+              <Link href="/message">
+                <motion.button 
+                  className="button secondary"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  查看更多资讯
+                </motion.button>
+              </Link>
             </div>
           </div>
 

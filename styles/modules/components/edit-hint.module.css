@@ -7,13 +7,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 10;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   pointer-events: all;
 }
@@ -24,39 +24,52 @@
 }
 
 .hintContent {
-  background: rgba(255, 255, 255, 0.98);
-  padding: 0.8rem 1.6rem;
-  border-radius: 12px;
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.08),
-    0 2px 4px rgba(0, 0, 0, 0.04);
-  font-size: 0.95rem;
-  color: #333;
-  transform: translateY(20px);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid rgba(255, 255, 255, 0.98);
-  animation: float 2.5s ease-in-out infinite;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1.2rem 2.6rem;
+  border-radius: 20px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.95);
+  transform: translateY(20px) scale(0.95);
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: float 4s ease-in-out infinite;
   user-select: none;
   white-space: nowrap;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .visible .hintContent {
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
 }
 
 @keyframes float {
   0%, 100% {
     transform: translateY(0);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
   50% {
-    transform: translateY(-8px);
+    transform: translateY(-12px);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 }
 
 /* 移动端适配 */
 @media (max-width: 768px) {
   .hintContent {
-    font-size: 0.9rem;
-    padding: 0.7rem 1.4rem;
+    font-size: 1.2rem;
+    padding: 1.1rem 2.4rem;
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hintContent {
+    font-size: 1.15rem;
+    padding: 1rem 2.2rem;
+    border-radius: 16px;
   }
 }

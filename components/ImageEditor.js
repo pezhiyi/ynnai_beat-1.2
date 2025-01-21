@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import styles from '../styles/modules/components/image-editor.module.css';
+import sliderStyles from '../styles/modules/components/slider.module.css';
 
 // 添加防抖函数
 const debounce = (func, wait) => {
@@ -714,7 +715,7 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel, initialTra
         borderTopLeftRadius: '12px',
         borderTopRightRadius: '12px',
         boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.1)',
-        padding: '12px',
+        padding: '12px 12px 20px', 
         maxHeight: '80vh',
         overflow: 'auto',
         zIndex: 1000,
@@ -973,7 +974,7 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel, initialTra
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                   pointerEvents: 'none',
                   transform: 'translateY(0px)',
@@ -990,7 +991,7 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel, initialTra
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" strokeLinecap="round"/>
                   <path d="M3 3v5h5" strokeLinecap="round"/>
                 </svg>
                 点击放大擦除
@@ -1263,8 +1264,10 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel, initialTra
               overflow: 'hidden',
               background: 'rgba(0, 0, 0, 0.03)',
               borderRadius: '6px',
-              padding: '8px 12px',
-              marginTop: '8px'
+              padding: '16px 12px 24px', 
+              marginTop: '1px',
+              marginBottom: '5px',
+              minHeight: '75px'
             }}
           >
             {activeControl === 'rotate' && (
@@ -1279,7 +1282,7 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel, initialTra
                 }}>
                   <span>旋转角度</span>
                   <span style={{ 
-                    padding: '1px 3px',
+                    padding: '1px 4px',
                     background: '#fff',
                     borderRadius: '3px',
                     fontSize: '11px'
@@ -1287,23 +1290,19 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel, initialTra
                     {Math.round(transform.rotate)}°
                   </span>
                 </div>
-                <input
-                  type="range"
-                  min="-180"
-                  max="180"
-                  step="1"
-                  value={transform.rotate}
-                  onChange={handleRotateChange}
-                  style={{
-                    width: '100%',
-                    margin: '2px 0',
-                    height: '3px',
-                    borderRadius: '1.5px',
-                    WebkitAppearance: 'none',
-                    background: 'rgba(0, 0, 0, 0.1)',
-                    cursor: 'pointer'
-                  }}
-                />
+                <div className={sliderStyles.sliderTrack}>
+                  <input
+                    type="range"
+                    min="-180"
+                    max="180"
+                    step="1"
+                    value={transform.rotate}
+                    onChange={handleRotateChange}
+                    className={sliderStyles.slider}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                  />
+                </div>
               </>
             )}
             {activeControl === 'scale' && (
@@ -1318,7 +1317,7 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel, initialTra
                 }}>
                   <span>缩放比例</span>
                   <span style={{ 
-                    padding: '1px 3px',
+                    padding: '1px 4px',
                     background: '#fff',
                     borderRadius: '3px',
                     fontSize: '11px'
@@ -1326,23 +1325,19 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel, initialTra
                     {Math.round(transform.scale * 100)}%
                   </span>
                 </div>
-                <input
-                  type="range"
-                  min="0.1"
-                  max="3"
-                  step="0.1"
-                  value={transform.scale}
-                  onChange={handleScaleChange}
-                  style={{
-                    width: '100%',
-                    margin: '2px 0',
-                    height: '3px',
-                    borderRadius: '1.5px',
-                    WebkitAppearance: 'none',
-                    background: 'rgba(0, 0, 0, 0.1)',
-                    cursor: 'pointer'
-                  }}
-                />
+                <div className={sliderStyles.sliderTrack}>
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="3"
+                    step="0.1"
+                    value={transform.scale}
+                    onChange={handleScaleChange}
+                    className={sliderStyles.slider}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchMove={(e) => e.stopPropagation()}
+                  />
+                </div>
               </>
             )}
           </motion.div>

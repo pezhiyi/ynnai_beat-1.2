@@ -1,0 +1,215 @@
+.menuContainer {
+  display: flex;
+  align-items: center;
+  height: 2rem; /* 增加导航栏高度 */
+}
+
+.desktopMenu {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.menuItem {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  position: relative;
+  padding: 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.menuItem:hover {
+  color: white;
+}
+
+.menuItem:hover .iconWrapper {
+  transform: translateY(-1px);
+}
+
+.menuItem:hover::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 2px;
+}
+
+.iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+  font-weight: 600;
+}
+
+.menuIconBars {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background-color: white;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.menuIconBars::before,
+.menuIconBars::after {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 2px;
+  background-color: white;
+  transition: all 0.3s ease;
+}
+
+.menuIconBars::before {
+  top: -8px;
+}
+
+.menuIconBars::after {
+  bottom: -8px;
+}
+
+.menuIconBars.open {
+  background-color: transparent;
+}
+
+.menuIconBars.open::before {
+  transform: rotate(45deg);
+  top: 0;
+}
+
+.menuIconBars.open::after {
+  transform: rotate(-45deg);
+  bottom: 0;
+}
+
+.loginButton {
+  padding: 0.75rem 1.75rem;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 0.5rem;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  margin-left: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.loginButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+/* 移动端样式 */
+.menuButton {
+  display: none;
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+}
+
+.mobileMenu {
+  position: absolute;
+  top: 100%;
+  left: 0.5rem;
+  right: 0.5rem;
+  background: rgba(18, 18, 18, 0.3);
+  backdrop-filter: blur(20px);
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  animation: slideDown 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.8rem;
+  margin-top: 0.35rem;
+}
+
+.mobileMenuItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 1rem;
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border-radius: 0.6rem;
+  background: transparent;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mobileMenuItem .titleWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mobileMenuItem .iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobileMenuItem .title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.mobileMenuItem .description {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-right: 0.5rem;
+}
+
+.mobileMenu .loginButton {
+  margin: 0.25rem;
+  padding: 0.6rem 1rem;
+  width: calc(100% - 0.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.6rem;
+  font-size: 1rem;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .desktopMenu {
+    display: none;
+  }
+
+  .menuButton {
+    display: block;
+  }
+
+  .mobileMenu .loginButton {
+    margin: 0.25rem;
+    padding: 0.6rem 1rem;
+    width: calc(100% - 0.5rem);
+    text-align: center;
+  }
+}

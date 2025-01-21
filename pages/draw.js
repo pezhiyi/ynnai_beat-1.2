@@ -105,6 +105,13 @@ export default function Draw() {
     }
   }, [dimensions]);
 
+  // 处理画布点击事件
+  const handleCanvasClick = () => {
+    if (!hasImage) {
+      fileInputRef.current?.click();
+    }
+  };
+
   // 处理拖拽事件
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -269,8 +276,6 @@ export default function Draw() {
       // 构建日期目录和时间戳
       const dateDir = `${year}${month}${day}`;
       const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`;
-      console.log('生成的日期目录:', dateDir);
-      console.log('生成的时间戳:', timestamp);
       
       // 上传图片到服务端 API
       console.log('准备上传图片...');
@@ -522,24 +527,28 @@ export default function Draw() {
           translateY: layerPositions[editingLayer]?.y || 0
         }
       }));
-    } else {
-      // 取消编辑，恢复之前的状态
-      const previousState = layerTransforms[editingLayer]?.previousState;
-      if (previousState) {
-        setLayerTransforms(prev => ({
-          ...prev,
-          [editingLayer]: { ...previousState }
-        }));
-        setLayerPositions(prev => ({
-          ...prev,
-          [editingLayer]: {
-            x: previousState.translateX,
-            y: previousState.translateY
-          }
-        }));
-      }
+
+      // 关闭弹窗
+      setIsEditModalOpen(false);
+      return;
     }
-    
+
+    // 取消编辑，恢复之前的状态
+    const previousState = layerTransforms[editingLayer]?.previousState;
+    if (previousState) {
+      setLayerTransforms(prev => ({
+        ...prev,
+        [editingLayer]: { ...previousState }
+      }));
+      setLayerPositions(prev => ({
+        ...prev,
+        [editingLayer]: {
+          x: previousState.translateX,
+          y: previousState.translateY
+        }
+      }));
+    }
+
     setEditMode(false);
     setEditingLayer(null);
     setIsEditModalOpen(false); // 关闭编辑弹窗
@@ -1341,8 +1350,9 @@ export default function Draw() {
             onTouchMove={handleCanvasTouchMove}
             onTouchEnd={handleCanvasTouchEnd}
             onTouchCancel={handleCanvasTouchEnd}
+            onClick={handleCanvasClick}
             style={{ 
-              cursor: hasImage ? 'move' : 'default',
+              cursor: hasImage ? 'move' : 'pointer',
               position: 'relative'
             }}
           >
@@ -1368,6 +1378,98 @@ export default function Draw() {
               </div>
             ))}
           </canvas>
+          
+          {!hasImage && (
+            <>
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '1rem',
+                color: 'rgba(0, 0, 0, 0.5)',
+                userSelect: 'none',
+                pointerEvents: 'none',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(0, 0, 0, 0.03)',
+                  borderRadius: '50%',
+                  marginBottom: '0.5rem'
+                }}>
+                  <svg 
+                    width="32" 
+                    height="32" 
+                    viewBox="0 0 24 24" 
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </div>
+                <div style={{
+                  fontSize: '1.1rem',
+                  fontWeight: '500',
+                  marginBottom: '0.25rem'
+                }}>
+                  点击上传图片
+                </div>
+                <div style={{
+                  fontSize: '0.9rem',
+                  color: 'rgba(0, 0, 0, 0.3)',
+                }}>
+                  支持拖拽上传
+                </div>
+              </div>
+              <div style={{
+                position: 'absolute',
+                bottom: '1.3rem',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '100%',
+                maxWidth: '300px',
+                display: 'flex',
+                justifyContent: 'center',
+                pointerEvents: 'none'
+              }}>
+                <img 
+                  src="/images/1.png" 
+                  alt="示例图片"
+                  style={{
+                    maxWidth: '22%',
+                    height: 'auto',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+              </div>
+            </>
+          )}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                handleFile(file);
+              }
+            }}
+            accept="image/*"
+            style={{ display: 'none' }}
+          />
           <input
             type="file"
             ref={layerInputRef}
@@ -1538,7 +1640,7 @@ export default function Draw() {
               )}
             </motion.div>
           )}
-          {isClient && (
+          {isClient && hasImage && (
             <motion.button
               onClick={handleDownloadCanvas}
               className="tool-button"
@@ -1564,9 +1666,9 @@ export default function Draw() {
               }}
             >
               <svg className="button-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
+                <path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4"/>
+                <path d="M17 9l-5 5-5-5"/>
+                <path d="M12 14V3"/>
               </svg>
             </motion.button>
           )}
@@ -1601,7 +1703,12 @@ export default function Draw() {
                 <input
                   type="file"
                   ref={fileInputRef}
-                  onChange={handleFileSelect}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleFile(file);
+                    }
+                  }}
                   accept="image/*"
                   style={{ display: 'none' }}
                 />

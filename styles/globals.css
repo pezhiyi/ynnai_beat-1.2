@@ -321,3 +321,24 @@ input, textarea, select {
     transform: rotate(360deg);
   }
 }
+
+.nav-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 2.2rem;
+}
+
+.nav-logo {
+  margin-left: -1.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.logo-wrapper {
+  display: flex;
+  align-items: center;
+}
