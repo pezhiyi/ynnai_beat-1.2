@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styles from '../styles/modules/pages/message.module.css';
 import Head from 'next/head';
 import { motion } from 'framer-motion';
-import { FaNewspaper, FaBox, FaPalette, FaHandshake, FaBookOpen } from 'react-icons/fa';
+import { FaNewspaper, FaBox, FaPalette, FaHandshake, FaBookOpen, FaCopy } from 'react-icons/fa';
 import Layout from '../components/Layout/Layout';
 import Image from 'next/image';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
+import { callDeepseekApi } from '@/utils/deepseekApi';
 
 // 导出新闻数据
 export const newsData = [
@@ -306,7 +308,61 @@ const categories = [
 export default function MessagePage() {
   const [activeCategory, setActiveCategory] = useState('全部资讯');
   const [filteredNews, setFilteredNews] = useState(newsData);
-  const [isNavVisible, setIsNavVisible] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedModule, setSelectedModule] = useState(null);
+  const [selectedPlatform, setSelectedPlatform] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationType, setGenerationType] = useState('text');
+  const [uploadedImages, setUploadedImages] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState('');
+  const [selectedTone, setSelectedTone] = useState('');
+  const [selectedType, setSelectedType] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [showGenerateUI, setShowGenerateUI] = useState(false);
+  const fileInputRef = useRef(null);
+  const chatHistoryRef = useRef(null);
+
+  // 生成API提示文本
+  const generatePrompt = (userInput) => {
+    if (!selectedProduct || !selectedPlatform || !selectedTone || !selectedType) {
+      toast.error('请选择选项中您要的回复');
+      return null;
+    }
+
+    return `创建一个关于${selectedType}${selectedProduct}的${selectedPlatform}20个字内的标题和120字内的内容，符合${selectedPlatform}标题和内容的限制，主要以${selectedTone}的调性，引入点击，帮助销售${userInput.trim() ? '，我的要求是' + userInput : ''}`;
+  };
+
+  const platformsByModule = {
+    '商品模块': ['抖音', '小红书', '淘宝', '拼多多', 'Tiktok', 'Facebook', 'Ins'],
+    '内容模块': ['抖音', '小红书', 'Tiktok', 'Facebook', 'Ins']
+  };
+
+  const productOptions = [
+    '定制棒球帽',
+    '个性定制T恤',
+    '创意马克杯',
+    '艺术帆布包',
+    '定制手机壳',
+    '个性抱枕',
+    '定制挂画',
+    '个性鼠标垫',
+    '定制笔记本',
+    '定制帆布鞋'
+  ];
+
+  const toneOptions = [
+    "震惊",
+    "品宣",
+    "吸引",
+    "售卖",
+    "平淡"
+  ];
+
+  const typeOptions = [
+    '宠物画像',
+    '人物画像',
+    '宠物风格叠加'
+  ];
 
   const handleCategoryClick = (categoryName) => {
     setActiveCategory(categoryName);
@@ -316,8 +372,200 @@ export default function MessagePage() {
       const filtered = newsData.filter(news => news.category === categoryName);
       setFilteredNews(filtered);
     }
-    setIsNavVisible(false);
   };
+
+  const handleModuleSelect = (module) => {
+    setSelectedModule(module);
+    setSelectedPlatform(null); // 重置平台选择
+  };
+
+  const handlePlatformSelect = (platform) => {
+    setSelectedPlatform(platform);
+  };
+
+  const handleGenerate = () => {
+    if (selectedModule === '商品模块') {
+      toast.error('该功能正在开发中，敬请期待！', {
+        duration: 3000,
+        icon: '🚧',
+        style: {
+          background: 'rgba(0, 0, 0, 0.8)',
+          color: '#fff',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+        },
+      });
+      return;
+    }
+
+    setShowGenerateUI(true);
+    setGenerationType('text');
+  };
+
+  const handleBackToSelect = () => {
+    setShowGenerateUI(false);
+    setMessages([]);
+    setSelectedProduct('');
+    setSelectedTone('');
+    setSelectedType('');
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setShowGenerateUI(false);
+    setMessages([]);
+    setSelectedModule(null);
+    setSelectedPlatform(null);
+    setSelectedProduct('');
+    setSelectedTone('');
+    setSelectedType('');
+    setIsGenerating(false);
+  };
+
+  const handleImageUpload = (event) => {
+    const files = Array.from(event.target.files);
+    if (files.length + uploadedImages.length > 3) {
+      toast.error('最多只能上传3张图片');
+      return;
+    }
+
+    const newImages = files.map(file => ({
+      url: URL.createObjectURL(file),
+      file: file
+    }));
+
+    setUploadedImages([...uploadedImages, ...newImages]);
+  };
+
+  const handleRemoveImage = (index) => {
+    const newImages = [...uploadedImages];
+    URL.revokeObjectURL(newImages[index].url);
+    newImages.splice(index, 1);
+    setUploadedImages(newImages);
+  };
+
+  const handleDownloadCanvas = () => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 900; // 3:4 ratio
+    canvas.height = 1200;
+
+    // 创建合成图片的逻辑
+    const loadImages = uploadedImages.map(img => {
+      return new Promise((resolve) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.src = img.url;
+      });
+    });
+
+    Promise.all(loadImages).then(images => {
+      // 计算每张图片的位置和大小
+      const imageHeight = canvas.height / images.length;
+      
+      images.forEach((img, index) => {
+        const aspectRatio = img.width / img.height;
+        const drawWidth = canvas.width;
+        const drawHeight = imageHeight;
+        const x = 0;
+        const y = index * imageHeight;
+        
+        ctx.drawImage(img, x, y, drawWidth, drawHeight);
+      });
+
+      // 下载图片
+      const link = document.createElement('a');
+      link.download = '合成图片.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+  };
+
+  const handleSendMessage = async () => {
+    const userInput = document.querySelector(`.${styles.chatInput}`).value;
+
+    // 验证是否选择了所有必要的变量
+    if (!selectedProduct || !selectedPlatform || !selectedTone || !selectedType) {
+      toast.error('请选择选项中您要的回复');
+      return;
+    }
+
+    const prompt = generatePrompt(userInput);
+    if (!prompt) return;
+
+    // 显示用户实际输入的消息，如果有的话
+    if (userInput.trim()) {
+      const newMessage = {
+        type: 'user',
+        content: userInput
+      };
+      setMessages(prev => [...prev, newMessage]);
+    }
+    
+    document.querySelector(`.${styles.chatInput}`).value = '';
+
+    // 调用 Deepseek API
+    setIsGenerating(true);
+    try {
+      const apiMessages = [
+        { role: 'system', content: '你是一个专业的营销文案撰写助手，擅长根据不同平台的特点创作引人注目的标题和内容。' },
+        { role: 'user', content: prompt }
+      ];
+
+      const response = await callDeepseekApi(apiMessages);
+      
+      const aiMessage = {
+        type: 'ai',
+        content: response
+      };
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      toast.error('生成失败，请重试');
+      console.error('API Error:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const copyToClipboard = async (text) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        // 对于支持 navigator.clipboard 的现代浏览器
+        await navigator.clipboard.writeText(text);
+      } else {
+        // 降级方案：创建临时文本区域
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+          document.execCommand('copy');
+          textArea.remove();
+        } catch (err) {
+          console.error('复制失败:', err);
+          textArea.remove();
+          return false;
+        }
+      }
+      toast.success('已复制到剪贴板');
+      return true;
+    } catch (err) {
+      console.error('复制失败:', err);
+      toast.error('复制失败，请手动复制');
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    if (chatHistoryRef.current) {
+      chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   return (
     <Layout>
@@ -326,58 +574,276 @@ export default function MessagePage() {
       </Head>
       <div className={styles.container}>
         <div className={styles.content}>
-          <nav className={styles.navigation}>
-            <motion.div 
-              className={styles.navToggle}
-              onClick={() => setIsNavVisible(!isNavVisible)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <span className={styles.activeCategory}>
-                {categories.find(cat => cat.name === activeCategory)?.icon({ className: styles.categoryIcon })}
-                {activeCategory}
-              </span>
-              <motion.span 
-                className={styles.toggleArrow}
-                animate={{ rotate: isNavVisible ? 180 : 0 }}
+          <div className={styles.categoryNav}>
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                className={`${styles.categoryButton} ${activeCategory === category.name ? styles.active : ''}`}
+                onClick={() => handleCategoryClick(category.name)}
               >
-                ▼
-              </motion.span>
-            </motion.div>
-
-            <motion.div 
-              className={`${styles.categoryList} ${isNavVisible ? styles.visible : ''}`}
-              initial={false}
-            >
-              {categories.map((category) => (
-                <motion.div
-                  key={category.id}
-                  className={`${styles.categoryItem} ${
-                    activeCategory === category.name ? styles.active : ''
-                  }`}
-                  onClick={() => {
-                    handleCategoryClick(category.name);
-                  }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className={styles.categoryLeft}>
-                    <category.icon className={styles.categoryIcon} />
-                    <span className={styles.categoryName}>{category.name}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </nav>
+                <category.icon className={styles.categoryIcon} />
+                {category.name}
+              </button>
+            ))}
+          </div>
 
           <main className={styles.newsSection}>
+            <div className={styles.inspirationSection}>
+              <button
+                className={styles.inspirationButton}
+                onClick={() => setIsModalOpen(true)}
+              >
+                <span className={styles.buttonTitle}>✨ 灵感生成</span>
+                <p className={styles.buttonDesc}>专属训练AI大模型助手，一键生成优质内容，帮助您5分钟创建与运营店铺。</p>
+              </button>
+            </div>
+
+            {isModalOpen && (
+              <div className={styles.modalOverlay}>
+                <div className={styles.modal}>
+                  {!showGenerateUI ? (
+                    <>
+                      <div className={styles.modalHeader}>
+                        <h3>选择生成模块</h3>
+                        <button 
+                          className={styles.closeButton}
+                          onClick={handleCloseModal}
+                        >
+                          ×
+                        </button>
+                      </div>
+                      
+                      <div className={styles.moduleSection}>
+                        <div 
+                          className={`${styles.moduleCard} ${selectedModule === '商品模块' ? styles.selected : ''}`}
+                          onClick={() => handleModuleSelect('商品模块')}
+                        >
+                          <span className={styles.moduleIcon}>🛍️</span>
+                          <h4>商品模块</h4>
+                          <p>我要上架商品</p>
+                        </div>
+                        
+                        <div 
+                          className={`${styles.moduleCard} ${selectedModule === '内容模块' ? styles.selected : ''}`}
+                          onClick={() => handleModuleSelect('内容模块')}
+                        >
+                          <span className={styles.moduleIcon}>📝</span>
+                          <h4>内容模块</h4>
+                          <p>我要运营店铺</p>
+                        </div>
+                      </div>
+
+                      {selectedModule && (
+                        <div className={styles.platformSection}>
+                          <h4>选择平台</h4>
+                          <div className={styles.platformGrid}>
+                            {platformsByModule[selectedModule].map((platform) => (
+                              <button
+                                key={platform}
+                                className={`${styles.platformButton} ${selectedPlatform === platform ? styles.selected : ''}`}
+                                onClick={() => handlePlatformSelect(platform)}
+                              >
+                                {platform}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className={styles.modalFooter}>
+                        <button
+                          className={styles.generateButton}
+                          onClick={handleGenerate}
+                          disabled={!selectedModule || !selectedPlatform}
+                        >
+                          开始生成
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className={styles.modalHeader}>
+                        <div className={styles.headerLeft}>
+                          <button 
+                            className={styles.backButton}
+                            onClick={handleBackToSelect}
+                          >
+                            ←
+                          </button>
+                          <h3>内容生成</h3>
+                        </div>
+                        <button 
+                          className={styles.closeButton}
+                          onClick={handleCloseModal}
+                        >
+                          ×
+                        </button>
+                      </div>
+
+                      <div className={styles.generationContent}>
+                        <div className={styles.generationTypes}>
+                          <button
+                            className={`${styles.typeButton} ${generationType === 'text' ? styles.selected : ''}`}
+                            onClick={() => setGenerationType('text')}
+                          >
+                            文字生成
+                          </button>
+                          <button
+                            className={`${styles.typeButton} ${generationType === 'image' ? styles.selected : ''}`}
+                            onClick={() => setGenerationType('image')}
+                          >
+                            图片创作
+                          </button>
+                        </div>
+
+                        {generationType === 'text' ? (
+                          <div className={styles.textGeneration}>
+                            <div className={styles.optionsSection}>
+                              <div className={styles.selectGroup}>
+                                <label>商品</label>
+                                <select 
+                                  value={selectedProduct}
+                                  onChange={(e) => setSelectedProduct(e.target.value)}
+                                  className={styles.select}
+                                >
+                                  <option value="">选择商品</option>
+                                  {productOptions.map((product) => (
+                                    <option key={product} value={product}>
+                                      {product}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className={styles.selectGroup}>
+                                <label>类型</label>
+                                <select 
+                                  value={selectedType}
+                                  onChange={(e) => setSelectedType(e.target.value)}
+                                  className={styles.select}
+                                >
+                                  <option value="">选择类型</option>
+                                  {typeOptions.map((type) => (
+                                    <option key={type} value={type}>
+                                      {type}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className={styles.selectGroup}>
+                                <label>调性</label>
+                                <select 
+                                  value={selectedTone}
+                                  onChange={(e) => setSelectedTone(e.target.value)}
+                                  className={styles.select}
+                                >
+                                  <option value="">选择调性</option>
+                                  {toneOptions.map((tone) => (
+                                    <option key={tone} value={tone}>
+                                      {tone}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+
+                            <div className={styles.chatContainer}>
+                              <div className={styles.chatHistory} ref={chatHistoryRef}>
+                                {messages.map((message, index) => (
+                                  <div
+                                    key={index}
+                                    className={styles.messageContainer}
+                                  >
+                                    <div className={`${styles.chatMessage} ${
+                                      message.type === 'user' ? styles.userMessage : styles.aiMessage
+                                    }`}>
+                                      {message.content}
+                                    </div>
+                                    {message.type === 'ai' && (
+                                      <button
+                                        className={styles.copyButton}
+                                        onClick={() => copyToClipboard(message.content)}
+                                      >
+                                        <FaCopy size={14} />
+                                        复制内容
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                              <div className={styles.inputGroup}>
+                                <textarea
+                                  className={styles.chatInput}
+                                  placeholder="可持续调整[文字框选填]"
+                                  rows={1}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      handleSendMessage();
+                                    }
+                                  }}
+                                />
+                                <button 
+                                  className={`${styles.sendButton} ${isGenerating ? styles.generating : ''}`}
+                                  onClick={handleSendMessage}
+                                  disabled={isGenerating}
+                                >
+                                  {isGenerating ? '生成中...' : '生成'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className={styles.imageGeneration}>
+                            <div className={styles.imageUploadArea}>
+                              {uploadedImages.map((img, index) => (
+                                <div key={index} className={styles.uploadedImage}>
+                                  <img src={img.url} alt={`上传图片 ${index + 1}`} />
+                                  <button
+                                    className={styles.removeImage}
+                                    onClick={() => handleRemoveImage(index)}
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                              {uploadedImages.length < 3 && (
+                                <button
+                                  className={styles.uploadButton}
+                                  onClick={() => fileInputRef.current.click()}
+                                >
+                                  + 上传图片
+                                </button>
+                              )}
+                              <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={handleImageUpload}
+                                style={{ display: 'none' }}
+                              />
+                            </div>
+                            {uploadedImages.length > 0 && (
+                              <button
+                                className={styles.downloadButton}
+                                onClick={handleDownloadCanvas}
+                              >
+                                下载合成图片
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
             {filteredNews.map((news) => (
               <Link href={`/news/${news.id}`} key={news.id}>
-                <motion.article
+                <article
                   className={styles.newsItem}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
                 >
                   <div 
                     className={styles.newsImage}
@@ -391,7 +857,7 @@ export default function MessagePage() {
                     <span className={styles.newsDate}>{news.date}</span>
                     <span className={styles.newsCategory}>{news.category}</span>
                   </div>
-                </motion.article>
+                </article>
               </Link>
             ))}
           </main>

@@ -723,6 +723,11 @@ const ImageEditor = ({ layer, onTransformChange, onConfirm, onCancel, initialTra
         flexDirection: 'column',
         gap: '12px'
       }}
+      onClick={(e) => {
+        if (e.target === editorRef.current) {
+          onCancel();
+        }
+      }}
     >
       {/* 顶部标题栏 */}
       <div style={{

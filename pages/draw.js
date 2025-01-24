@@ -7,6 +7,21 @@ import ImageEditor from '../components/ImageEditor';
 import SlotSelector from '../services/slotService/SlotSelector'; // 修正导入路径
 import EditHint from '../components/EditHint'; // 导入EditHint组件
 
+const CANVAS_RATIO = 3/4; // 画布比例 3:4
+
+// 创建防抖函数
+const debounce = (fn, delay) => {
+  let timer = null;
+  return (...args) => {
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(() => {
+      fn(...args);
+    }, delay);
+  };
+};
+
 export default function Draw() {
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -43,9 +58,8 @@ export default function Draw() {
     const maxWidth = Math.min(window.innerWidth - (padding * 2), 800);
     
     // 根据3:4比例计算高度
-    const aspectRatio = 3 / 4;
     const width = maxWidth;
-    const height = width / aspectRatio;
+    const height = width / CANVAS_RATIO;
     
     // 确保高度不超过可用空间
     const maxHeight = window.innerHeight - (padding * 2) - buttonAreaHeight - topOffset;
@@ -53,7 +67,7 @@ export default function Draw() {
     // 如果计算的高度超过最大高度，则反向计算宽度
     if (height > maxHeight) {
       const adjustedHeight = maxHeight;
-      const adjustedWidth = adjustedHeight * aspectRatio;
+      const adjustedWidth = adjustedHeight * CANVAS_RATIO;
       setDimensions({ width: adjustedWidth, height: adjustedHeight });
     } else {
       setDimensions({ width, height });
@@ -154,7 +168,7 @@ export default function Draw() {
         const dpr = window.devicePixelRatio || 1;
 
         // 保持3:4的画布比例
-        const canvasRatio = 3/4;
+        const canvasRatio = CANVAS_RATIO;
         
         // 计算画布尺寸，基于图片尺寸
         let canvasWidth = dimensions.width * dpr;
@@ -178,23 +192,32 @@ export default function Draw() {
         const imageRatio = img.width / img.height;
         let targetWidth, targetHeight, x, y;
 
-        if (imageRatio === 1) {
-          // 正方形图片，居中显示
-          const size = Math.min(canvasWidth, canvasHeight);
-          targetWidth = size;
-          targetHeight = size;
-          x = (canvasWidth - size) / 2;
-          y = (canvasHeight - size) / 2;
-        } else if (imageRatio > 1) {
-          // 横向图片，适应宽度
+        if (imageRatio > canvasRatio) {
+          // 如果图片比例大于3:4，以宽度为基准
           targetWidth = canvasWidth;
           targetHeight = canvasWidth / imageRatio;
           x = 0;
-          y = (canvasHeight - targetHeight) / 2;
+          y = Math.max(0, (canvasHeight - targetHeight) / 2);
         } else {
-          // 纵向图片，适应高度
+          // 如果图片比例小于或等于3:4，以高度为基准
           targetHeight = canvasHeight;
           targetWidth = canvasHeight * imageRatio;
+          x = Math.max(0, (canvasWidth - targetWidth) / 2);
+          y = 0;
+        }
+
+        // 确保图片不会超出画布范围
+        if (targetWidth > canvasWidth) {
+          const scale = canvasWidth / targetWidth;
+          targetWidth *= scale;
+          targetHeight *= scale;
+          x = 0;
+          y = (canvasHeight - targetHeight) / 2;
+        }
+        if (targetHeight > canvasHeight) {
+          const scale = canvasHeight / targetHeight;
+          targetWidth *= scale;
+          targetHeight *= scale;
           x = (canvasWidth - targetWidth) / 2;
           y = 0;
         }
@@ -212,15 +235,12 @@ export default function Draw() {
           visible: true,
           width: img.width,
           height: img.height,
-          order: 1 // 添加order属性，新图层始终为1号
+          order: layers.length + 1 // 给新图层最高的order值
         };
-        // 更新其他图层的order
+        // 更新图层列表，新图层放在最前面
         setLayers(prevLayers => {
-          const updatedLayers = prevLayers.map(layer => ({
-            ...layer,
-            order: layer.order + 1
-          }));
-          return [newLayer, ...updatedLayers];
+          // 不需要更新其他图层的order，因为在移动图层时会重新计算
+          return [newLayer, ...prevLayers];
         });
         // 设置新图层位置
         setLayerPositions(prev => ({
@@ -386,15 +406,12 @@ export default function Draw() {
           visible: true,
           width: img.width,
           height: img.height,
-          order: 1 // 添加order属性，新图层始终为1号
+          order: layers.length + 1 // 给新图层最高的order值
         };
-        // 更新其他图层的order
+        // 更新图层列表，新图层放在最前面
         setLayers(prevLayers => {
-          const updatedLayers = prevLayers.map(layer => ({
-            ...layer,
-            order: layer.order + 1
-          }));
-          return [newLayer, ...updatedLayers];
+          // 不需要更新其他图层的order，因为在移动图层时会重新计算
+          return [newLayer, ...prevLayers];
         });
         // 设置新图层位置
         setLayerPositions(prev => ({
@@ -414,16 +431,13 @@ export default function Draw() {
     if (index === 0) return;
     setLayers(prevLayers => {
       const newLayers = [...prevLayers];
-      const currentLayer = newLayers[index];
-      const upperLayer = newLayers[index - 1];
-      
-      // 交换order值
-      const tempOrder = currentLayer.order;
-      currentLayer.order = upperLayer.order;
-      upperLayer.order = tempOrder;
-      
-      // 根据order排序
-      return newLayers.sort((a, b) => a.order - b.order);
+      // 直接交换相邻图层的位置
+      [newLayers[index], newLayers[index - 1]] = [newLayers[index - 1], newLayers[index]];
+      // 更新每个图层的order以匹配其新位置
+      return newLayers.map((layer, idx) => ({
+        ...layer,
+        order: prevLayers.length - idx // 从上到下递减order
+      }));
     });
   };
 
@@ -432,16 +446,13 @@ export default function Draw() {
     if (index === layers.length - 1) return;
     setLayers(prevLayers => {
       const newLayers = [...prevLayers];
-      const currentLayer = newLayers[index];
-      const lowerLayer = newLayers[index + 1];
-      
-      // 交换order值
-      const tempOrder = currentLayer.order;
-      currentLayer.order = lowerLayer.order;
-      lowerLayer.order = tempOrder;
-      
-      // 根据order排序
-      return newLayers.sort((a, b) => a.order - b.order);
+      // 直接交换相邻图层的位置
+      [newLayers[index], newLayers[index + 1]] = [newLayers[index + 1], newLayers[index]];
+      // 更新每个图层的order以匹配其新位置
+      return newLayers.map((layer, idx) => ({
+        ...layer,
+        order: prevLayers.length - idx // 从上到下递减order
+      }));
     });
   };
 
@@ -485,12 +496,13 @@ export default function Draw() {
   };
 
   // 进入编辑模式
-  const handleEditLayer = (layerId) => {
+  const handleEditLayer = useCallback((layerId) => {
     // 如果图层面板打开，不进入编辑模式
     if (showLayers) return;
 
     setEditMode(true);
     setEditingLayer(layerId);
+    setSelectedLayer(layerId);
     
     // 获取当前变换值
     const currentTransform = layerTransforms[layerId] || {
@@ -508,8 +520,11 @@ export default function Draw() {
         previousState: { ...currentTransform } // 保存编辑前的状态，用于取消编辑
       }
     }));
-    setIsEditModalOpen(true); // 打开编辑弹窗
-  };
+
+    // 关闭图层面板，打开编辑弹窗
+    setShowLayers(false);
+    setIsEditModalOpen(true);
+  }, [showLayers, layerTransforms]);
 
   // 退出编辑模式
   const handleEditComplete = (save = true) => {
@@ -530,6 +545,8 @@ export default function Draw() {
 
       // 关闭弹窗
       setIsEditModalOpen(false);
+      setEditMode(false);
+      setEditingLayer(null);
       return;
     }
 
@@ -551,9 +568,7 @@ export default function Draw() {
 
     setEditMode(false);
     setEditingLayer(null);
-    setIsEditModalOpen(false); // 关闭编辑弹窗
-    // 退出编辑模式后再显示图层面板
-    setShowLayers(true);
+    setIsEditModalOpen(false);
   };
 
   // 处理旋转变化
@@ -690,7 +705,7 @@ export default function Draw() {
   };
 
   // 取消编辑
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     // 恢复原始变换值
     if (editingLayer) {
       const originalTransform = layerTransforms[editingLayer] || { rotation: 0, scale: 1 };
@@ -711,83 +726,221 @@ export default function Draw() {
     setEditMode(false);
     setEditingLayer(null);
     setIsEditModalOpen(false); // 关闭编辑弹窗
-    // 模拟点击图层按钮
+    // 退出编辑模式后再显示图层面板
     setShowLayers(true);
+  }, [editingLayer, layerTransforms, layerPositions]);
 
-    // 重新渲染画布
-    requestAnimationFrame(() => {
-      updateCanvas();
-    });
-  };
+  // 处理图层按钮点击
+  const handleLayersButtonClick = useCallback((e) => {
+    e.stopPropagation(); // 阻止事件冒泡
+    // 如果在编辑模式，先退出编辑模式
+    if (editMode) {
+      handleCancelEdit();
+    }
+    // 切换图层面板显示状态
+    setShowLayers(prev => !prev);
+  }, [editMode, handleCancelEdit]);
 
-  // 更新画布
+  // 创建防抖的updateCanvas函数
+  const debouncedUpdateCanvas = useCallback(
+    debounce(() => {
+      requestAnimationFrame(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+
+        // 清空画布
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 填充白色背景
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 按图层顺序绘制（从下到上）
+        const sortedLayers = [...layers].sort((a, b) => a.order - b.order);
+
+        // 遍历并绘制每个图层
+        sortedLayers.forEach(layer => {
+          if (!layer.visible) return;
+
+          let img = imageCache[layer.id];
+          if (!img) {
+            // 如果图片不在缓存中，创建并加载
+            img = new Image();
+            img.src = layer.src;
+            img.onload = () => {
+              setImageCache(prev => ({
+                ...prev,
+                [layer.id]: img
+              }));
+            };
+            return;
+          }
+
+          ctx.save();
+
+          const imageRatio = layer.width / layer.height;
+          let targetWidth, targetHeight, x, y;
+
+          // 计算图层尺寸和位置
+          if (imageRatio > CANVAS_RATIO) {
+            targetWidth = canvas.width;
+            targetHeight = canvas.width / imageRatio;
+            x = 0;
+            y = Math.max(0, (canvas.height - targetHeight) / 2);
+          } else {
+            targetHeight = canvas.height;
+            targetWidth = canvas.height * imageRatio;
+            x = Math.max(0, (canvas.width - targetWidth) / 2);
+            y = 0;
+          }
+
+          // 应用图层变换
+          const transform = layerTransforms[layer.id] || { rotation: 0, scale: 1 };
+          const position = layerPositions[layer.id] || { x: 0, y: 0 };
+
+          // 移动到图层中心点
+          ctx.translate(
+            x + targetWidth / 2 + position.x * dpr,
+            y + targetHeight / 2 + position.y * dpr
+          );
+
+          // 应用旋转和缩放
+          ctx.rotate(transform.rotation * Math.PI / 180);
+          ctx.scale(transform.scale, transform.scale);
+
+          // 绘制图层
+          ctx.drawImage(
+            img,
+            -targetWidth / 2,
+            -targetHeight / 2,
+            targetWidth,
+            targetHeight
+          );
+
+          // 如果是选中的图层，绘制选中效果
+          if (layer.id === selectedLayer) {
+            // 保存当前图层的数据
+            const layerData = {
+              x: x + position.x * dpr,
+              y: y + position.y * dpr,
+              width: targetWidth,
+              height: targetHeight,
+              transform: transform,
+              imageData: ctx.getImageData(
+                x + position.x * dpr,
+                y + position.y * dpr,
+                targetWidth,
+                targetHeight
+              )
+            };
+
+            // 绘制选中框
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)'; // 使用半透明的蓝色
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 4]); // 设置虚线样式
+            ctx.lineDashOffset = Date.now() / 100; // 添加动画效果
+            
+            // 绘制边框，与图片大小完全贴合
+            ctx.strokeRect(
+              -targetWidth / 2,
+              -targetHeight / 2,
+              targetWidth,
+              targetHeight
+            );
+            
+            // 绘制四个角的小圆点
+            ctx.fillStyle = '#3B82F6'; // 蓝色
+            ctx.setLineDash([]); // 取消虚线
+            const cornerRadius = 3; // 稍微减小圆点大小
+            const corners = [
+              [-targetWidth / 2, -targetHeight / 2], // 左上
+              [targetWidth / 2, -targetHeight / 2],  // 右上
+              [-targetWidth / 2, targetHeight / 2],  // 左下
+              [targetWidth / 2, targetHeight / 2]    // 右下
+            ];
+            corners.forEach(([x, y]) => {
+              ctx.beginPath();
+              ctx.arc(x, y, cornerRadius, 0, Math.PI * 2);
+              ctx.fill();
+            });
+
+            // 将图层数据存储起来，供其他函数使用
+            window.selectedLayerData = layerData;
+          }
+
+          ctx.restore();
+        });
+      });
+    }, 16) // 16ms 约等于 60fps
+  , [layers, layerTransforms, layerPositions, selectedLayer, imageCache]);
+
+  // 替换原有的 updateCanvas
   const updateCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-
-    // 清空画布
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // 按order属性排序图层，order小的在上面（后绘制）
-    const sortedLayers = [...layers].sort((a, b) => b.order - a.order);
-
-    // 按顺序绘制所有可见图层
-    sortedLayers.forEach(layer => {
-      if (!layer.visible) return;
-
-      const img = new Image();
-      img.src = layer.src;
-
-      const transform = layerTransforms[layer.id] || { rotation: 0, scale: 1 };
-      const position = layerPositions[layer.id] || { x: 0, y: 0 };
-
-      // 保存当前状态
-      ctx.save();
-
-      // 应用变换
-      ctx.translate(position.x * dpr, position.y * dpr);
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate((transform.rotation * Math.PI) / 180);
-      ctx.scale(transform.scale, transform.scale);
-      ctx.translate(-canvas.width / 2, -canvas.height / 2);
-
-      // 绘制图像
-      const imageRatio = layer.width / layer.height;
-      let targetWidth, targetHeight, x, y;
-
-      if (imageRatio === 1) {
-        const size = Math.min(canvas.width, canvas.height);
-        targetWidth = size;
-        targetHeight = size;
-        x = (canvas.width - size) / 2;
-        y = (canvas.height - size) / 2;
-      } else if (imageRatio > 1) {
-        targetWidth = canvas.width;
-        targetHeight = canvas.width / imageRatio;
-        x = 0;
-        y = (canvas.height - targetHeight) / 2;
-      } else {
-        targetHeight = canvas.height;
-        targetWidth = canvas.height * imageRatio;
-        x = (canvas.width - targetWidth) / 2;
-        y = 0;
-      }
-
-      ctx.drawImage(img, x, y, targetWidth, targetHeight);
-
-      // 恢复状态
-      ctx.restore();
-    });
-  }, [layers, layerTransforms, layerPositions]);
+    debouncedUpdateCanvas();
+  }, [debouncedUpdateCanvas]);
 
   // 当图层状态改变时更新画布
   useEffect(() => {
     updateCanvas();
   }, [layers, layerTransforms, layerPositions, updateCanvas]);
+
+  // 获取点击的图层
+  const getClickedLayer = useCallback((x, y) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+
+    // 按顺序检查每个图层（从上到下）
+    const sortedLayers = [...layers].sort((a, b) => b.order - a.order);
+    for (const layer of sortedLayers) {
+      if (!layer.visible) continue;
+
+      const imageRatio = layer.width / layer.height;
+      let targetWidth, targetHeight, layerX, layerY;
+      const dpr = window.devicePixelRatio || 1;
+
+      if (imageRatio > CANVAS_RATIO) {
+        targetWidth = canvas.width;
+        targetHeight = canvas.width / imageRatio;
+        layerX = 0;
+        layerY = Math.max(0, (canvas.height - targetHeight) / 2);
+      } else {
+        targetHeight = canvas.height;
+        targetWidth = canvas.height * imageRatio;
+        layerX = Math.max(0, (canvas.width - targetWidth) / 2);
+        layerY = 0;
+      }
+
+      // 应用图层变换
+      const transform = layerTransforms[layer.id] || { rotation: 0, scale: 1 };
+      const position = layerPositions[layer.id] || { x: 0, y: 0 };
+
+      // 修正坐标系转换
+      const centerX = layerX + targetWidth / 2 + position.x;
+      const centerY = layerY + targetHeight / 2 + position.y;
+      
+      // 计算点击位置相对于图层中心的偏移
+      const relativeX = (x * dpr - centerX);
+      const relativeY = (y * dpr - centerY);
+      
+      // 应用缩放和旋转变换
+      const adjustedX = relativeX / transform.scale + targetWidth / 2;
+      const adjustedY = relativeY / transform.scale + targetHeight / 2;
+
+      // 检查点击是否在图层范围内
+      if (
+        adjustedX >= 0 &&
+        adjustedX <= targetWidth &&
+        adjustedY >= 0 &&
+        adjustedY <= targetHeight
+      ) {
+        return layer.id;
+      }
+    }
+    return null;
+  }, [layers, layerTransforms, layerPositions, CANVAS_RATIO]);
 
   // 处理画布鼠标按下
   const [moveDistance, setMoveDistance] = useState(0);
@@ -825,12 +978,10 @@ export default function Draw() {
 
   // 处理画布鼠标移动
   const handleCanvasMouseMove = useCallback((e) => {
-    if (!isDraggingImage || editMode) return;
+    if (!isDraggingImage || !selectedLayer) return;
     
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = e.clientX;
+    const y = e.clientY;
     
     // 计算移动距离
     const dx = x - initialPosition.x;
@@ -838,29 +989,35 @@ export default function Draw() {
     const distance = Math.sqrt(dx * dx + dy * dy);
     setMoveDistance(distance);
 
-    if (selectedLayer !== null) {
-      const deltaX = x - dragStart.x;
-      const deltaY = y - dragStart.y;
-      
-      setLayerPositions(prev => ({
-        ...prev,
-        [selectedLayer]: {
-          x: (prev[selectedLayer]?.x || 0) + deltaX,
-          y: (prev[selectedLayer]?.y || 0) + deltaY
-        }
-      }));
-      
-      setDragStart({ x, y });
-    }
-  }, [isDraggingImage, selectedLayer, dragStart, initialPosition, editMode]);
+    const deltaX = x - dragStart.x;
+    const deltaY = y - dragStart.y;
+    
+    setLayerPositions(prev => ({
+      ...prev,
+      [selectedLayer]: {
+        x: (prev[selectedLayer]?.x || 0) + deltaX,
+        y: (prev[selectedLayer]?.y || 0) + deltaY
+      }
+    }));
+    
+    setDragStart({ x, y });
+  }, [isDraggingImage, selectedLayer, dragStart, initialPosition]);
 
   // 处理画布鼠标松开
   const handleCanvasMouseUp = () => {
     if (isDraggingImage && selectedLayer && moveDistance < moveThreshold) {
-      // 如果图层面板打开，不触发编辑模式
-      if (!showLayers) {
-        // 如果移动距离小于阈值，视为点击，进入编辑模式
-        handleEditLayer(selectedLayer);
+      // 如果移动距离小于阈值且在图片范围内，视为点击，进入编辑模式
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = dragStart.x - rect.left;
+        const mouseY = dragStart.y - rect.top;
+        const clickedLayerId = getClickedLayer(mouseX, mouseY);
+        
+        // 只有当点击位置在图片范围内时才进入编辑模式
+        if (clickedLayerId === selectedLayer && !showLayers) {
+          handleEditLayer(selectedLayer);
+        }
       }
     }
     setIsDraggingImage(false);
@@ -868,88 +1025,114 @@ export default function Draw() {
   };
 
   // 处理画布触摸开始
-  const handleCanvasTouchStart = (e) => {
+  const handleCanvasTouchStart = useCallback((e) => {
     if (!hasImage) return;
     
     const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
+    if (!canvas) return;
+    
+    // 防止页面滚动和其他默认行为
+    e.preventDefault();
+    e.stopPropagation();
+    
     const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
     const x = touch.clientX - rect.left;
     const y = touch.clientY - rect.top;
     
     // 获取触摸的图层
     const clickedLayerId = getClickedLayer(x, y);
     if (clickedLayerId) {
-      // 如果当前正在编辑，不进行新的选择
-      if (editMode) return;
-      
+      e.stopPropagation(); // 确保事件不会冒泡到其他元素
       setSelectedLayer(clickedLayerId);
       setIsDraggingImage(true);
-      setDragStart({ x, y });
-      setInitialPosition({ x, y });
+      setDragStart({ x: touch.clientX, y: touch.clientY });
+      setInitialPosition({ x: touch.clientX, y: touch.clientY });
       setMoveDistance(0);
-      
-      // 防止触发其他点击事件
-      e.preventDefault();
-      e.stopPropagation();
     } else {
-      setSelectedLayer(null);
+      // 如果点击空白区域且在编辑模式，退出编辑模式
       if (editMode) {
         handleCancelEdit();
       }
+      setSelectedLayer(null);
     }
-  };
+  }, [hasImage, editMode, getClickedLayer, handleCancelEdit]);
 
   // 处理画布触摸移动
   const handleCanvasTouchMove = useCallback((e) => {
-    if (!isDraggingImage || editMode) return;
+    if (!isDraggingImage || !selectedLayer) return;
     
     // 防止页面滚动
     e.preventDefault();
+    e.stopPropagation();
     
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
     const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
     
-    // 计算移动距离
-    const dx = x - initialPosition.x;
-    const dy = y - initialPosition.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    setMoveDistance(distance);
+    // 使用 requestAnimationFrame 优化性能
+    requestAnimationFrame(() => {
+      // 计算移动距离用于判断是否为点击
+      const dx = touch.clientX - initialPosition.x;
+      const dy = touch.clientY - initialPosition.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      setMoveDistance(distance);
 
-    if (selectedLayer !== null) {
-      const deltaX = x - dragStart.x;
-      const deltaY = y - dragStart.y;
+      const deltaX = touch.clientX - dragStart.x;
+      const deltaY = touch.clientY - dragStart.y;
       
-      setLayerPositions(prev => ({
-        ...prev,
-        [selectedLayer]: {
-          x: (prev[selectedLayer]?.x || 0) + deltaX,
-          y: (prev[selectedLayer]?.y || 0) + deltaY
-        }
-      }));
+      setLayerPositions(prev => {
+        const currentPos = prev[selectedLayer] || { x: 0, y: 0 };
+        
+        // 计算新位置
+        const newX = currentPos.x + deltaX;
+        const newY = currentPos.y + deltaY;
+        
+        // 限制移动范围，防止图层移动过远
+        const canvas = canvasRef.current;
+        if (!canvas) return prev;
+        
+        const maxDistance = Math.max(canvas.width, canvas.height) * 0.5; // 最大移动距离为画布尺寸的一半
+        
+        return {
+          ...prev,
+          [selectedLayer]: {
+            x: Math.max(Math.min(newX, maxDistance), -maxDistance),
+            y: Math.max(Math.min(newY, maxDistance), -maxDistance)
+          }
+        };
+      });
       
-      setDragStart({ x, y });
-    }
-  }, [isDraggingImage, selectedLayer, dragStart, initialPosition, editMode]);
+      setDragStart({ x: touch.clientX, y: touch.clientY });
+    });
+  }, [isDraggingImage, selectedLayer, dragStart, initialPosition]);
 
   // 处理画布触摸结束
-  const handleCanvasTouchEnd = (e) => {
-    if (isDraggingImage && selectedLayer && moveDistance < moveThreshold) {
-      // 如果图层面板打开或正在编辑中，不触发编辑模式
-      if (!showLayers && !editMode) {
-        // 如果移动距离小于阈值，视为点击，进入编辑模式
-        handleEditLayer(selectedLayer);
-        // 防止触发其他点击事件
-        e.preventDefault();
-        e.stopPropagation();
+  const handleCanvasTouchEnd = useCallback((e) => {
+    if (!selectedLayer) return;
+
+    e.stopPropagation();
+    e.preventDefault();
+
+    if (moveDistance < moveThreshold) {
+      // 获取触摸结束时的位置
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.changedTouches[0];
+        const touchX = touch.clientX - rect.left;
+        const touchY = touch.clientY - rect.top;
+        const clickedLayerId = getClickedLayer(touchX, touchY);
+        
+        // 只有当触摸结束位置在图片范围内时才进入编辑模式
+        if (clickedLayerId === selectedLayer && !showLayers) {
+          handleEditLayer(selectedLayer);
+        }
       }
     }
+    
     setIsDraggingImage(false);
     setMoveDistance(0);
-  };
+    setDragStart({ x: 0, y: 0 });
+  }, [selectedLayer, moveDistance, moveThreshold, showLayers, handleEditLayer, getClickedLayer]);
 
   // 移除旧的重复函数
   const moveLayer = useCallback((deltaX, deltaY) => {
@@ -1000,74 +1183,6 @@ export default function Draw() {
     const { left, top, width, height } = imageInfo;
     return x >= left && x <= left + width && y >= top && y <= top + height;
   }, []);
-
-  // 获取点击位置的图层
-  const getClickedLayer = useCallback((x, y) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-
-    const dpr = window.devicePixelRatio || 1;
-    // 按order属性排序图层，从上到下遍历（order小的在上面）
-    const sortedLayers = [...layers].sort((a, b) => a.order - b.order);
-    
-    for (const layer of sortedLayers) {
-      if (!layer.visible) continue;
-
-      // 使用图层自身的宽高比
-      const imageRatio = layer.width / layer.height;
-      let targetWidth, targetHeight, imgX, imgY;
-
-      // 计算图片实际显示尺寸和位置
-      if (imageRatio === 1) {
-        const size = Math.min(canvas.width, canvas.height) / dpr;
-        targetWidth = size;
-        targetHeight = size;
-        imgX = (canvas.width / dpr - size) / 2;
-        imgY = (canvas.height / dpr - size) / 2;
-      } else if (imageRatio > 1) {
-        targetWidth = canvas.width / dpr;
-        targetHeight = (canvas.width / dpr) / imageRatio;
-        imgX = 0;
-        imgY = (canvas.height / dpr - targetHeight) / 2;
-      } else {
-        targetHeight = canvas.height / dpr;
-        targetWidth = (canvas.height / dpr) * imageRatio;
-        imgX = (canvas.width / dpr - targetWidth) / 2;
-        imgY = 0;
-      }
-
-      // 应用图层变换
-      const transform = layerTransforms[layer.id] || { rotation: 0, scale: 1 };
-      const position = layerPositions[layer.id] || { x: 0, y: 0 };
-
-      // 计算变换后的中心点
-      const centerX = imgX + targetWidth / 2 + position.x;
-      const centerY = imgY + targetHeight / 2 + position.y;
-
-      // 将点击坐标转换到图层坐标系
-      const dx = x - centerX;
-      const dy = y - centerY;
-
-      // 应用旋转变换的逆变换
-      const angle = -transform.rotation * Math.PI / 180;
-      const rotatedX = dx * Math.cos(angle) - dy * Math.sin(angle);
-      const rotatedY = dx * Math.sin(angle) + dy * Math.cos(angle);
-
-      // 应用缩放变换的逆变换
-      const scaledX = rotatedX / transform.scale;
-      const scaledY = rotatedY / transform.scale;
-
-      // 检查点是否在图层范围内
-      const halfWidth = targetWidth / 2;
-      const halfHeight = targetHeight / 2;
-      
-      if (scaledX >= -halfWidth && scaledX <= halfWidth && 
-          scaledY >= -halfHeight && scaledY <= halfHeight) {
-        return layer.id;
-      }
-    }
-    return null;
-  }, [layers, layerPositions, layerTransforms]);
 
   // 处理画布鼠标离开
   const handleCanvasMouseLeave = useCallback(() => {
@@ -1384,12 +1499,12 @@ export default function Draw() {
               <div style={{
                 position: 'absolute',
                 top: '50%',
-                left: '50%',
+                left: '50.5%',
                 transform: 'translate(-50%, -50%)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '1rem',
+                gap: '1.2rem',
                 color: 'rgba(0, 0, 0, 0.5)',
                 userSelect: 'none',
                 pointerEvents: 'none',
@@ -1406,12 +1521,12 @@ export default function Draw() {
                   marginBottom: '0.5rem'
                 }}>
                   <svg 
-                    width="32" 
-                    height="32" 
+                    width="42" 
+                    height="42" 
                     viewBox="0 0 24 24" 
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="2"
+                    strokeWidth="2.1"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   >
@@ -1436,23 +1551,20 @@ export default function Draw() {
               </div>
               <div style={{
                 position: 'absolute',
-                bottom: '1.3rem',
+                bottom: '1.5rem',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                width: '100%',
-                maxWidth: '300px',
-                display: 'flex',
-                justifyContent: 'center',
                 pointerEvents: 'none'
               }}>
                 <img 
-                  src="/images/1.png" 
+                  src="/images/logo_all.png" 
                   alt="示例图片"
                   style={{
-                    maxWidth: '22%',
-                    height: 'auto',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                    width: '86px',
+                    height: '29px',
+                    objectFit: 'contain',
+                    borderRadius: '0px',
+                    boxShadow: 'none'
                   }}
                 />
               </div>
@@ -1495,7 +1607,7 @@ export default function Draw() {
           {hasImage && (
             <motion.button
               className="tool-button"
-              onClick={() => setShowLayers(!showLayers)}
+              onClick={handleLayersButtonClick}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               title="图层管理"
@@ -1613,7 +1725,7 @@ export default function Draw() {
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M18 6L6 18" strokeLinecap="round"/>
-                          <path d="M6 6l12 12" strokeLinecap="round"/>
+                          <path d="M6 12h12" strokeLinecap="round"/>
                         </svg>
                       </button>
                     </div>
@@ -1843,7 +1955,11 @@ export default function Draw() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            onClick={handleCloseEditModal}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                handleCancelEdit();
+              }
+            }}
           />
         )}
       </div>

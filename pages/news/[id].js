@@ -103,9 +103,9 @@ export default function NewsDetail() {
                   <h2>咨询与支持</h2>
                   <p>如果您对{newsItem.title}有任何疑问，欢迎通过以下方式联系我们：</p>
                   <ul>
-                    <li>客服电话：400-XXX-XXXX</li>
-                    <li>在线客服：工作日 9:00-18:00</li>
-                    <li>电子邮箱：support@ynnaibeat.com</li>
+                    <li>客服电话：13640802760</li>
+                    <li>在线客服：每周一至周日 24:00-24:00</li>
+                    <li>电子邮箱：support@ynnai.com</li>
                   </ul>
                 </div>
               </div>

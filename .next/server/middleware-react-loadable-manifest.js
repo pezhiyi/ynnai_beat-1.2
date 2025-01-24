@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{}"
+self.__REACT_LOADABLE_MANIFEST="{\"index.js -> @/components/Auth/LoginModal\":{\"id\":\"index.js -> @/components/Auth/LoginModal\",\"files\":[]},\"index.js -> @/components/IntroduceModal\":{\"id\":\"index.js -> @/components/IntroduceModal\",\"files\":[\"static/chunks/components_IntroduceModal_js.js\"]},\"index.js -> @/components/LogoAnimation\":{\"id\":\"index.js -> @/components/LogoAnimation\",\"files\":[\"static/chunks/components_LogoAnimation_tsx.js\"]}}"

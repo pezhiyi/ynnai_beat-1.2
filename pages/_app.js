@@ -4,6 +4,7 @@ import '../styles/globals/moveable.css';
 import '../styles/modules/edit/modal.css';
 import '../styles/modules/components/ai-portrait-modal.css';
 import ErrorBoundary from '../components/ErrorBoundary';
+import { Toaster } from 'react-hot-toast';
 
 export default function App({ Component, pageProps }) {
   return (
@@ -25,6 +26,17 @@ export default function App({ Component, pageProps }) {
       <ErrorBoundary>
         <Component {...pageProps} />
       </ErrorBoundary>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#333',
+            color: '#fff',
+            borderRadius: '8px',
+          },
+        }}
+      />
     </>
   );
 }
